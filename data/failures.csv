@@ -1,0 +1,26 @@
+componente,tempo_falha_horas,custo_peca,custo_falta_hora,lead_time_horas,horizonte_planejamento_horas
+Bomba Centrífuga A,12000,3500,800,72,8760
+Bomba Centrífuga A,14500,3500,800,72,8760
+Bomba Centrífuga A,9800,3500,800,72,8760
+Bomba Centrífuga A,13200,3500,800,72,8760
+Bomba Centrífuga A,11000,3500,800,72,8760
+Bomba Centrífuga A,16000,3500,800,72,8760
+Bomba Centrífuga A,8900,3500,800,72,8760
+Bomba Centrífuga A,12500,3500,800,72,8760
+Rolamento Motor B,32000,450,200,24,8760
+Rolamento Motor B,41000,450,200,24,8760
+Rolamento Motor B,28000,450,200,24,8760
+Rolamento Motor B,36000,450,200,24,8760
+Rolamento Motor B,39000,450,200,24,8760
+Rolamento Motor B,25000,450,200,24,8760
+Rolamento Motor B,43000,450,200,24,8760
+Rolamento Motor B,31000,450,200,24,8760
+Rolamento Motor B,38000,450,200,24,8760
+Rolamento Motor B,29000,450,200,24,8760
+Selo Mecânico C,6000,1200,1500,48,8760
+Selo Mecânico C,7500,1200,1500,48,8760
+Selo Mecânico C,5200,1200,1500,48,8760
+Selo Mecânico C,6800,1200,1500,48,8760
+Selo Mecânico C,8100,1200,1500,48,8760
+Selo Mecânico C,4900,1200,1500,48,8760
+Selo Mecânico C,7200,1200,1500,48,8760
