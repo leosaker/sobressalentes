@@ -64,6 +64,11 @@ create table if not exists public.workout_logs (
   trainer_seen boolean not null default false
 );
 
+-- Versão 2: validade do treino e resposta do personal (seguro rodar de novo).
+alter table public.plans        add column if not exists ends_on      date;
+alter table public.workout_logs add column if not exists trainer_reply text not null default '';
+alter table public.workout_logs add column if not exists replied_at   timestamptz;
+
 create index if not exists exercises_trainer_idx on public.exercises (trainer_id);
 create index if not exists students_trainer_idx  on public.students (trainer_id);
 create index if not exists plans_student_idx     on public.plans (student_id);
@@ -199,7 +204,7 @@ drop policy if exists logs_trainer_update on public.workout_logs;
 create policy logs_trainer_update on public.workout_logs for update to authenticated
   using (student_id in (select id from public.students where trainer_id = auth.uid()));
 revoke update on public.workout_logs from authenticated;
-grant update (trainer_seen) on public.workout_logs to authenticated;
+grant update (trainer_seen, trainer_reply, replied_at) on public.workout_logs to authenticated;
 
 -- ---------- SEU E-MAIL DE PERSONAL ----------
 -- Troque pelo e-mail que você vai usar para entrar como personal e rode esta linha:

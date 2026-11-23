@@ -13,12 +13,16 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
 - **Acompanhamento**: aviso de treino novo, alunos sem treinar há 7+ dias, convites pendentes,
   treinos em 7 e 30 dias, esforço médio, gráfico semanal, comentários e cargas usadas em cada exercício
 - Mudou o treino? O aluno vê na hora, sem precisar reenviar link
+- **Evolução de carga**: gráfico por exercício com as cargas que o aluno anotou (ex.: 30 kg → 42,5 kg, +42%)
+- **Validade do treino**: data de vencimento (padrão de 6 semanas, com atalhos de 4/6/8/12) e aviso de "treinos para renovar"
+- **Responder o aluno**: responda o comentário de cada treino; ele recebe o aviso no app
 
 **Aluno**
 - Login próprio, vídeo de execução em cada exercício
 - Marca as séries, o cronômetro de descanso começa sozinho (som + vibração)
 - Anota a carga usada (o app lembra a do último treino)
 - Ao finalizar: nota de esforço (1–10) e comentário para o personal
+- Vê a resposta do personal, o próprio gráfico de evolução de carga e quando o treino vence
 - Histórico e treinos do mês. Funciona offline: o registro é enviado quando a internet volta
 
 ## Como colocar no ar (uns 15 minutos, tudo grátis)
@@ -30,6 +34,9 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
    ```sql
    insert into public.trainer_allowlist (email) values ('seu-email@exemplo.com');
    ```
+
+> **Já tinha rodado o `schema.sql` antes desta versão?** Rode também `supabase/migracao-v2.sql`
+> (ou rode o `schema.sql` inteiro de novo, que não apaga nada). Isso adiciona a validade e as respostas.
 
 ### 2. Ligar o app ao Supabase
 1. No Supabase, abra **Project Settings → API** (ou o botão **Connect**).
