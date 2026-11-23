@@ -14,13 +14,13 @@
 :root{
   --bg:#f4f6f8; --surface:#fff; --surface2:#eef2f5; --text:#0f172a; --muted:#64748b;
   --line:#e2e8f0; --primary:#0f766e; --primary-ink:#fff; --accent:#14b8a6; --danger:#dc2626;
-  --done:#16a34a; --radius:14px; --shadow:0 1px 2px rgba(15,23,42,.06),0 2px 8px rgba(15,23,42,.05);
+  --warn:#d97706; --done:#16a34a; --radius:14px; --shadow:0 1px 2px rgba(15,23,42,.06),0 2px 8px rgba(15,23,42,.05);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0b1220; --surface:#121a2b; --surface2:#1a2438; --text:#e5e9f0; --muted:#94a3b8;
     --line:#243049; --primary:#14b8a6; --primary-ink:#04201d; --accent:#2dd4bf; --danger:#f87171;
-    --done:#22c55e; --shadow:none;
+    --warn:#fbbf24; --done:#22c55e; --shadow:none;
   }
 }
 *{box-sizing:border-box}
@@ -28,32 +28,39 @@ html,body{margin:0}
 body{background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   padding-bottom:calc(72px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
 header{position:sticky;top:0;z-index:5;background:var(--primary);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
-  display:flex;align-items:center;gap:10px}
+  display:flex;align-items:center;gap:10px;min-height:56px}
 header h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-header button{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:10px;padding:8px 12px;font:inherit;font-size:14px}
+header button{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:10px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer}
+header .saving{font-size:12px;opacity:.85}
 main{max-width:720px;margin:0 auto;padding:16px}
 nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);display:flex;
   padding-bottom:env(safe-area-inset-bottom);z-index:5}
-nav button{flex:1;background:none;border:0;color:var(--muted);font:inherit;font-size:12px;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav[hidden]{display:none}
+nav button{flex:1;background:none;border:0;color:var(--muted);font:inherit;font-size:12px;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;cursor:pointer}
 nav button span{font-size:20px}
 nav button.on{color:var(--primary);font-weight:600}
+nav .badge{position:absolute;top:4px;left:calc(50% + 6px)}
+.badge{background:var(--danger);color:#fff;border-radius:99px;font-size:11px;font-weight:700;padding:1px 6px;line-height:16px}
 h2{font-size:20px;margin:0}
 h3{font-size:17px;margin:0}
 small,.muted{color:var(--muted);font-size:13px}
 small{display:block}
-.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 14px;flex-wrap:wrap}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 12px;flex-wrap:wrap}
+.toolbar:first-child{margin-top:4px}
 .card{display:block;width:100%;text-align:left;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:var(--radius);
   padding:14px;margin-bottom:10px;box-shadow:var(--shadow);font:inherit}
 button.card{cursor:pointer}
+.card.new{border-left:4px solid var(--accent)}
 .row{display:flex;align-items:center;gap:12px}
 .grow{flex:1;min-width:0}
 .chev{color:var(--muted);font-size:22px}
 .avatar{width:42px;height:42px;border-radius:50%;background:var(--surface2);color:var(--primary);display:grid;place-items:center;font-weight:700;flex:none}
-.btn{background:var(--surface2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font:inherit;font-size:15px;cursor:pointer}
+.btn{display:inline-block;text-align:center;text-decoration:none;background:var(--surface2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font:inherit;font-size:15px;cursor:pointer}
 .btn.primary{background:var(--primary);color:var(--primary-ink);border-color:transparent;font-weight:600}
 .btn.danger{color:var(--danger)}
 .btn.block{display:block;width:100%;margin-bottom:10px}
 .btn:disabled{opacity:.5}
+.link{background:none;border:0;color:var(--primary);font:inherit;font-size:14px;padding:6px 0;cursor:pointer}
 .icon{background:var(--surface2);border:0;color:var(--text);width:34px;height:34px;border-radius:10px;font-size:16px;flex:none;cursor:pointer}
 input,textarea,select{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 textarea{min-height:80px;resize:vertical}
@@ -64,7 +71,11 @@ label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
 .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
 .chip{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:7px 14px;border-radius:999px;font:inherit;font-size:14px;cursor:pointer}
 .chip.on{background:var(--primary);color:var(--primary-ink);border-color:transparent;font-weight:600}
-.empty{text-align:center;padding:40px 16px;color:var(--muted)}
+.st{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;margin-top:4px;background:var(--surface2);color:var(--muted)}
+.st.ok{background:color-mix(in srgb,var(--done) 16%,transparent);color:var(--done)}
+.st.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.st.bad{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
+.empty{text-align:center;padding:32px 16px;color:var(--muted)}
 .empty b{display:block;color:var(--text);font-size:17px;margin-bottom:6px}
 .group-title{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 8px}
 .video{margin-top:10px;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/9}
@@ -74,51 +85,92 @@ label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
 .presc{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .presc span{background:var(--surface2);border-radius:8px;padding:4px 9px;font-size:13px;font-weight:600}
 .obs{background:color-mix(in srgb,var(--accent) 12%,transparent);border-left:3px solid var(--accent);padding:8px 10px;border-radius:8px;margin:10px 0 0;font-size:14px}
-.sets{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.sets{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
 .set{width:46px;height:46px;border-radius:50%;border:2px solid var(--line);background:var(--surface);color:var(--text);font:inherit;font-weight:700;cursor:pointer}
 .set.done{background:var(--done);border-color:var(--done);color:#fff}
+.loadin{display:flex;align-items:center;gap:8px;margin-top:10px}
+.loadin label{margin:0;white-space:nowrap}
+.loadin input{max-width:140px;padding:8px 10px}
 .item.complete{border-color:var(--done)}
 .progress{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden;margin:6px 0 14px}
 .progress i{display:block;height:100%;background:var(--done);transition:width .3s}
 details{margin-top:8px;font-size:14px}
 summary{color:var(--primary);cursor:pointer}
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:14px}
+td{padding:6px 4px;border-bottom:1px solid var(--line)}
+td:last-child{text-align:right;white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:22px}
+.stat small{font-size:12px}
+.bars{display:flex;align-items:flex-end;gap:6px;height:64px;margin-top:10px}
+.bars div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;font-size:11px;color:var(--muted)}
+.bars i{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px}
+.code{font-size:30px;font-weight:800;letter-spacing:.18em;text-align:center;padding:10px;background:var(--surface2);border-radius:12px;margin:10px 0;font-variant-numeric:tabular-nums}
+.effort{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px}
+.effort button{padding:10px 0;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:inherit;font-weight:700;cursor:pointer}
+.effort button.on{background:var(--primary);color:var(--primary-ink);border-color:transparent}
+.eff{font-weight:700;font-size:13px;padding:4px 9px;border-radius:8px;background:var(--surface2);white-space:nowrap}
+.quote{margin:8px 0 0;font-size:14px;font-style:italic}
 dialog{border:0;border-radius:18px;padding:0;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 40px);background:var(--surface);color:var(--text)}
 dialog::backdrop{background:rgba(2,6,23,.55)}
 .dlg{padding:18px}
 .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
 .pick{max-height:50dvh;overflow:auto;margin-top:10px}
 .pick button{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer}
-.share-link{word-break:break-all;font-size:12px;background:var(--surface2);padding:10px;border-radius:10px;max-height:90px;overflow:auto}
 #timer{position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.88);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center}
 #timer[hidden]{display:none}
 #timer .big{font-size:88px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
 #timer .btns{display:flex;gap:10px}
-#timer button{background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:12px;padding:12px 18px;font:inherit;font-weight:600}
+#timer button{background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:12px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer}
 #toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100vw - 32px)}
 #toast.show{opacity:1}
 .hello{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border-radius:var(--radius);padding:18px;margin-bottom:14px}
 .hello h2{color:#fff}
-.hello small{color:rgba(255,255,255,.85)}
-.footer-link{display:block;text-align:center;margin:26px 0 8px;color:var(--muted);font-size:13px;background:none;border:0;width:100%;font-family:inherit}
+.hello small{color:rgba(255,255,255,.88)}
+.auth{max-width:420px;margin:24px auto 0}
+.auth .logo{width:72px;height:72px;margin:0 auto 10px;display:block}
+.auth h2{text-align:center}
+.auth .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface2);padding:4px;border-radius:12px;margin:18px 0 6px}
+.auth .tabs button{border:0;background:none;padding:9px;border-radius:9px;font:inherit;color:var(--muted);cursor:pointer}
+.auth .tabs button.on{background:var(--surface);color:var(--text);font-weight:600;box-shadow:var(--shadow)}
+.msg{padding:10px 12px;border-radius:10px;margin:10px 0;font-size:14px}
+.msg.err{background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger)}
+.msg.info{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--primary);border-radius:50%;margin:60px auto;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.offline{background:var(--warn);color:#000;text-align:center;font-size:13px;padding:6px;border-radius:10px;margin-bottom:12px}
 @media (max-width:380px){.grid4{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 <header id="top"></header>
-<main id="app"></main>
-<nav id="tabs"></nav>
+<main id="app"><div class="spinner"></div></main>
+<nav id="tabs" hidden></nav>
 <dialog id="dlg"></dialog>
 <div id="timer" hidden></div>
 <div id="toast"></div>
 
+<script src="config.js"></script>
+<script>
+  // Captura o link de recuperação de senha antes do Supabase limpar o endereço.
+  window.__RECOVERY__ = /type=recovery/.test(location.hash);
+  if (!window.__TEST_API__ && window.APP_CONFIG && window.APP_CONFIG.SUPABASE_URL) {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"><\/script>');
+  }
+</script>
 <script>
 /* ===================== utilidades ===================== */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const uid = () => Math.random().toString(36).slice(2, 10);
 const initials = n => (n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-const today = () => new Date().toISOString().slice(0, 10);
-const fmtDate = d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
+const localDay = (d = new Date()) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
+const fmtDateTime = iso => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const daysAgo = iso => Math.floor((new Date(localDay()) - new Date(localDay(iso))) / 864e5);
+const agoText = iso => { const d = daysAgo(iso); return d <= 0 ? 'hoje' : d === 1 ? 'ontem' : `há ${d} dias`; };
+const baseUrl = () => location.href.split('#')[0].split('?')[0];
+const CFG = window.APP_CONFIG || {};
+const APP_NAME = CFG.APP_NAME || 'Meu Personal';
 
 const store = {
   mem: {},
@@ -126,10 +178,24 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { this.mem[k] = v; } },
   del(k) { try { localStorage.removeItem(k); } catch { delete this.mem[k]; } }
 };
-
 function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1800);
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2400);
+}
+function ptError(e) {
+  const m = (e && (e.message || e.error_description || e.msg)) || String(e);
+  const map = [
+    [/Invalid login credentials/i, 'E-mail ou senha incorretos.'],
+    [/already registered|already been registered/i, 'Este e-mail já tem conta. Use “Entrar”.'],
+    [/Email not confirmed/i, 'Confirme seu e-mail primeiro (veja sua caixa de entrada e o spam).'],
+    [/Password should be at least/i, 'A senha precisa ter pelo menos 6 caracteres.'],
+    [/rate limit|too many/i, 'Muitas tentativas. Aguarde alguns minutos e tente de novo.'],
+    [/Failed to fetch|NetworkError|Load failed/i, 'Sem conexão com a internet.'],
+    [/row-level security.*trainers/i, 'Este e-mail não está autorizado como personal (veja o LEIA-ME).'],
+    [/invalid.*email|Unable to validate email/i, 'E-mail inválido.']
+  ];
+  for (const [re, pt] of map) if (re.test(m)) return pt;
+  return m;
 }
 
 /* ===================== vídeos ===================== */
@@ -137,7 +203,7 @@ function videoEmbed(url) {
   url = (url || '').trim();
   if (!/^https:\/\//i.test(url)) return '';
   let m;
-  const ifr = src => `<iframe src="${esc(src)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>`;
+  const ifr = src => `<iframe src="${esc(src)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" loading="lazy"></iframe>`;
   if ((m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{11})/)))
     return ifr(`https://www.youtube-nocookie.com/embed/${m[1]}?rel=0&playsinline=1&modestbranding=1`);
   if ((m = url.match(/vimeo\.com\/(?:video\/)?(\d+)(?:\/(\w+))?/)))
@@ -149,130 +215,334 @@ function videoEmbed(url) {
   return `<a href="${esc(url)}" target="_blank" rel="noopener" style="display:block;padding:14px;color:#fff">Abrir vídeo ↗</a>`;
 }
 
-/* ===================== link do aluno (dados no próprio link) ===================== */
-function b64u(u8) { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
-function unb64u(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
-async function encode(obj) {
-  const bytes = new TextEncoder().encode(JSON.stringify(obj));
-  if (window.CompressionStream) {
-    try {
-      const cs = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
-      return 'z' + b64u(new Uint8Array(await new Response(cs).arrayBuffer()));
-    } catch {}
-  }
-  return 'j' + b64u(bytes);
-}
-async function decode(str) {
-  let bytes = unb64u(str.slice(1));
-  if (str[0] === 'z') {
-    const ds = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-    bytes = new Uint8Array(await new Response(ds).arrayBuffer());
-  }
-  return JSON.parse(new TextDecoder().decode(bytes));
-}
-
-/* ===================== dados do personal ===================== */
-function seed() {
-  const ex = (name, group, notes = '') => ({ id: uid(), name, group, video: '', notes });
+/* ===================== acesso ao Supabase ===================== */
+function makeApi(sb) {
+  const chk = ({ data, error }) => { if (error) throw error; return data; };
+  const authChk = r => { if (r.error) throw r.error; return r.data; };
   return {
-    trainer: '',
-    exercises: [
-      ex('Agachamento livre', 'Pernas', 'Pés na largura dos ombros, coluna neutra, desça até a coxa ficar paralela ao chão.'),
-      ex('Leg press 45°', 'Pernas'),
-      ex('Cadeira extensora', 'Pernas'),
-      ex('Mesa flexora', 'Pernas'),
-      ex('Elevação pélvica', 'Glúteos'),
-      ex('Supino reto com barra', 'Peito'),
-      ex('Crucifixo com halteres', 'Peito'),
-      ex('Puxada frontal', 'Costas'),
-      ex('Remada baixa', 'Costas'),
-      ex('Desenvolvimento com halteres', 'Ombros'),
-      ex('Elevação lateral', 'Ombros'),
-      ex('Rosca direta', 'Bíceps'),
-      ex('Tríceps na polia', 'Tríceps'),
-      ex('Prancha abdominal', 'Abdômen', 'Mantenha o quadril alinhado e o abdômen contraído.'),
-      ex('Panturrilha em pé', 'Panturrilha'),
-    ],
-    students: []
+    async getUser() { const { data } = await sb.auth.getSession(); return data.session ? data.session.user : null; },
+    onAuth(cb) { sb.auth.onAuthStateChange((ev, s) => cb(ev, s ? s.user : null)); },
+    signIn: (email, password) => sb.auth.signInWithPassword({ email, password }).then(authChk).then(d => d.user),
+    signUp: (email, password) => sb.auth.signUp({ email, password, options: { emailRedirectTo: baseUrl() } }).then(authChk),
+    signOut: () => sb.auth.signOut(),
+    resetPassword: email => sb.auth.resetPasswordForEmail(email, { redirectTo: baseUrl() }).then(authChk),
+    updatePassword: password => sb.auth.updateUser({ password }).then(authChk),
+
+    myTrainer: uid => sb.from('trainers').select('*').eq('id', uid).maybeSingle().then(chk),
+    createTrainer: name => sb.from('trainers').insert({ name }).select().single().then(chk),
+    updateTrainer: (id, name) => sb.from('trainers').update({ name }).eq('id', id).then(chk),
+    myStudent: () => sb.rpc('my_student').then(chk).then(r => (r && r[0]) || null),
+    claimInvite: code => sb.rpc('claim_invite', { code }).then(chk),
+
+    students: () => sb.from('students').select('*').order('name').then(chk),
+    addStudent: s => sb.from('students').insert(s).select().single().then(chk),
+    updateStudent: (id, s) => sb.from('students').update(s).eq('id', id).then(chk),
+    deleteStudent: id => sb.from('students').delete().eq('id', id).then(chk),
+    resetInvite: id => sb.rpc('reset_invite', { p_student: id }).then(chk),
+
+    exercises: () => sb.from('exercises').select('*').order('name').then(chk),
+    addExercise: e => sb.from('exercises').insert(e).select().single().then(chk),
+    updateExercise: (id, e) => sb.from('exercises').update(e).eq('id', id).then(chk),
+    deleteExercise: id => sb.from('exercises').delete().eq('id', id).then(chk),
+
+    plans: studentId => { let q = sb.from('plans').select('*'); if (studentId) q = q.eq('student_id', studentId); return q.order('position').then(chk); },
+    addPlan: p => sb.from('plans').insert(p).select().single().then(chk),
+    updatePlan: (id, p) => sb.from('plans').update(p).eq('id', id).then(chk),
+    deletePlan: id => sb.from('plans').delete().eq('id', id).then(chk),
+
+    logs: ({ studentId, since, limit } = {}) => {
+      let q = sb.from('workout_logs').select('*').order('done_at', { ascending: false });
+      if (studentId) q = q.eq('student_id', studentId);
+      if (since) q = q.gte('done_at', since);
+      return q.limit(limit || 500).then(chk);
+    },
+    addLog: l => sb.from('workout_logs').insert(l).then(chk),
+    markSeen: ids => sb.from('workout_logs').update({ trainer_seen: true }).in('id', ids).then(chk)
   };
 }
-let db = store.get('mp_db', null) || seed();
-const save = () => store.set('mp_db', db);
-const exById = id => db.exercises.find(e => e.id === id);
-const groups = () => [...new Set(db.exercises.map(e => e.group).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+const api = window.__TEST_API__ ||
+  (CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase
+    ? makeApi(window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY))
+    : null);
 
-/* ===================== estado de navegação ===================== */
-let mode = 'trainer';          // 'trainer' | 'aluno'
-let view = { name: 'students' };
-let aluno = null;              // pacote de treino que o aluno recebeu
-let alunoPreview = false;      // personal vendo como aluno
-let alunoPlan = 0;
+/* ===================== estado ===================== */
+const S = {
+  user: null, role: null, trainer: null, me: null,
+  students: [], exercises: [], plans: [], logs: [],
+  view: { name: 'loading' }, offline: false
+};
+const exById = id => S.exercises.find(e => e.id === id);
+const groups = () => [...new Set(S.exercises.map(e => e.grp).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+const studentById = id => S.students.find(s => s.id === id);
+const plansOf = sid => S.plans.filter(p => p.student_id === sid).sort((a, b) => a.position - b.position);
+const logsOf = sid => S.logs.filter(l => l.student_id === sid);
+const unseen = () => S.logs.filter(l => !l.trainer_seen);
 let exFilter = { q: '', g: '' };
+let authTab = 'login', authMsg = null;
 
-function go(v) { view = v; render(); window.scrollTo(0, 0); }
+function go(v) { flushPlanSave(); S.view = v; render(); window.scrollTo(0, 0); }
 
-/* ===================== render ===================== */
+/* ===================== início e login ===================== */
+async function boot() {
+  const inv = location.hash.match(/convite=([A-Za-z0-9]+)/);
+  if (inv) { store.set('mp_invite', inv[1].toUpperCase()); authTab = 'signup'; history.replaceState(null, '', location.pathname + location.search); }
+  if (!api) return renderSetup();
+  api.onAuth((ev) => {
+    if (ev === 'PASSWORD_RECOVERY') { window.__RECOVERY__ = true; renderNewPassword(); }
+    if (ev === 'SIGNED_OUT') { resetState(); renderAuth(); }
+  });
+  let user = null;
+  try { user = await api.getUser(); } catch {}
+  if (window.__RECOVERY__ && user) return renderNewPassword();
+  if (!user) return renderAuth();
+  await enter(user);
+  flushPending();
+}
+function resetState() {
+  Object.assign(S, { user: null, role: null, trainer: null, me: null, students: [], exercises: [], plans: [], logs: [], view: { name: 'loading' }, offline: false });
+}
+async function enter(user) {
+  S.user = user;
+  $('#tabs').hidden = true;
+  $('#top').innerHTML = `<h1>${esc(APP_NAME)}</h1>`;
+  $('#app').innerHTML = '<div class="spinner"></div>';
+  const cacheKey = 'mp_cache_' + user.id;
+  try {
+    const t = await api.myTrainer(user.id);
+    if (t) {
+      S.role = 'trainer'; S.trainer = t;
+      await loadTrainer();
+      return go({ name: 'students' });
+    }
+    let me = await api.myStudent();
+    const inv = store.get('mp_invite', null);
+    let inviteErr = null;
+    if (!me && inv) {
+      try { await api.claimInvite(inv); me = await api.myStudent(); toast('Conta ligada ao seu personal!'); }
+      catch (e) { inviteErr = ptError(e); }
+      store.del('mp_invite');
+    }
+    if (me) {
+      S.role = 'student'; S.me = me;
+      await loadStudent();
+      store.set(cacheKey, { me: S.me, plans: S.plans, exercises: S.exercises, logs: S.logs });
+      return go({ name: 'treino' });
+    }
+    S.role = 'none';
+    renderOnboarding(inviteErr);
+  } catch (e) {
+    const cache = store.get(cacheKey, null);
+    if (cache) {
+      Object.assign(S, cache, { role: 'student', offline: true });
+      return go({ name: 'treino' });
+    }
+    $('#app').innerHTML = `<div class="msg err">${esc(ptError(e))}</div><button class="btn block" data-act="reload">Tentar de novo</button><button class="btn block" data-act="logout">Sair</button>`;
+  }
+}
+async function loadTrainer() {
+  const since = new Date(Date.now() - 120 * 864e5).toISOString();
+  [S.students, S.exercises, S.plans, S.logs] = await Promise.all([api.students(), api.exercises(), api.plans(), api.logs({ since })]);
+}
+async function loadStudent() {
+  [S.plans, S.exercises, S.logs] = await Promise.all([api.plans(S.me.id), api.exercises(), api.logs({ studentId: S.me.id, limit: 200 })]);
+}
+
+function authShell(inner) {
+  $('#tabs').hidden = true;
+  $('#top').innerHTML = `<h1>${esc(APP_NAME)}</h1>`;
+  $('#app').innerHTML = `<div class="auth"><img class="logo" src="icon.svg" alt="">${inner}</div>`;
+}
+function renderSetup() {
+  authShell(`<h2>Falta configurar</h2>
+    <p class="muted">Preencha o arquivo <b>config.js</b> com a URL e a chave do seu projeto Supabase. O passo a passo está no LEIA-ME.</p>`);
+}
+function renderAuth() {
+  const inv = store.get('mp_invite', null);
+  const signup = authTab === 'signup', forgot = authTab === 'forgot';
+  authShell(`
+    <h2>${forgot ? 'Recuperar senha' : 'Bem-vindo(a)!'}</h2>
+    ${inv ? `<div class="msg info">🎉 Você recebeu um convite de treino (código <b>${esc(inv)}</b>). ${signup ? 'Crie sua conta' : 'Crie sua conta ou entre'} para ver seu treino.</div>` : ''}
+    ${forgot ? '' : `<div class="tabs"><button class="${!signup ? 'on' : ''}" data-act="authTab" data-k="login">Entrar</button><button class="${signup ? 'on' : ''}" data-act="authTab" data-k="signup">Criar conta</button></div>`}
+    ${authMsg ? `<div class="msg ${authMsg.err ? 'err' : 'info'}">${esc(authMsg.text)}</div>` : ''}
+    <form id="authForm">
+      <label>E-mail</label><input name="email" type="email" autocomplete="email" required value="${esc(store.get('mp_last_email', ''))}">
+      ${forgot ? '' : `<label>Senha</label><input name="password" type="password" minlength="6" autocomplete="${signup ? 'new-password' : 'current-password'}" required>`}
+      <button class="btn primary block" style="margin-top:16px">${forgot ? 'Enviar link de recuperação' : signup ? 'Criar conta' : 'Entrar'}</button>
+    </form>
+    ${forgot ? `<button class="link" data-act="authTab" data-k="login">‹ Voltar</button>` : `<button class="link" data-act="authTab" data-k="forgot">Esqueci minha senha</button>`}`);
+  $('#authForm').onsubmit = async e => {
+    e.preventDefault();
+    const f = e.target, btn = f.querySelector('button'); btn.disabled = true;
+    const email = f.email.value.trim(); store.set('mp_last_email', email);
+    try {
+      if (forgot) {
+        await api.resetPassword(email);
+        authMsg = { text: 'Se o e-mail tiver conta, você vai receber um link para criar uma nova senha.' }; authTab = 'login'; return renderAuth();
+      }
+      if (signup) {
+        const r = await api.signUp(email, f.password.value);
+        if (!r.session) { authMsg = { text: `Enviamos um e-mail de confirmação para ${email}. Clique no link e depois entre aqui.` }; authTab = 'login'; return renderAuth(); }
+        authMsg = null; return enter(r.user);
+      }
+      const user = await api.signIn(email, f.password.value);
+      authMsg = null; await enter(user); flushPending();
+    } catch (err) { authMsg = { err: true, text: ptError(err) }; renderAuth(); }
+  };
+}
+function renderNewPassword() {
+  authShell(`<h2>Nova senha</h2>
+    <form id="pwForm"><label>Digite a nova senha</label><input name="password" type="password" minlength="6" required autocomplete="new-password">
+    <button class="btn primary block" style="margin-top:16px">Salvar senha</button></form>`);
+  $('#pwForm').onsubmit = async e => {
+    e.preventDefault();
+    try { await api.updatePassword(e.target.password.value); window.__RECOVERY__ = false; toast('Senha alterada!'); enter(await api.getUser()); }
+    catch (err) { toast(ptError(err)); }
+  };
+}
+function renderOnboarding(err) {
+  authShell(`<h2>Quase lá!</h2>
+    <p class="muted" style="text-align:center">Conta: ${esc(S.user.email)}</p>
+    ${err ? `<div class="msg err">${esc(err)}</div>` : ''}
+    <div class="card"><h3>Sou aluno(a)</h3>
+      <p class="muted" style="margin:6px 0 0">Digite o código de convite que seu personal enviou.</p>
+      <form id="codeForm"><input name="code" placeholder="Ex.: A1B2C3D4" autocapitalize="characters" required style="margin-top:10px;text-transform:uppercase">
+      <button class="btn primary block" style="margin-top:10px">Usar código</button></form>
+    </div>
+    <div class="card"><h3>Sou o personal</h3>
+      <p class="muted" style="margin:6px 0 10px">Crie seu perfil para montar os treinos dos seus alunos.</p>
+      <button class="btn block" data-act="becomeTrainer">Criar meu perfil de personal</button>
+    </div>
+    <button class="btn block" data-act="logout">Sair</button>`);
+  $('#codeForm').onsubmit = async e => {
+    e.preventDefault();
+    try { await api.claimInvite(e.target.code.value); toast('Conta ligada ao seu personal!'); enter(S.user); }
+    catch (er) { renderOnboarding(ptError(er)); }
+  };
+}
+
+/* ===================== render principal ===================== */
 function render() {
-  if (mode === 'aluno') return renderAluno();
-  const v = view;
-  const s = v.sid && db.students.find(x => x.id === v.sid);
-  const p = s && v.pid && s.plans.find(x => x.id === v.pid);
-  let title = 'Meu Personal', back = null, html = '';
+  if (S.role === 'student') return renderStudentApp();
+  if (S.role !== 'trainer') return;
+  const v = S.view;
+  const s = v.sid && studentById(v.sid);
+  const p = v.pid && S.plans.find(x => x.id === v.pid);
+  let title = APP_NAME, back = null, html = '';
   if (v.name === 'students') html = vStudents();
   else if (v.name === 'student' && s) { title = s.name; back = { name: 'students' }; html = vStudent(s); }
-  else if (v.name === 'plan' && p) { title = s.name + ' · ' + p.name; back = { name: 'student', sid: s.id }; html = vPlan(s, p); }
+  else if (v.name === 'plan' && s && p) { title = `${s.name} · ${p.name}`; back = { name: 'student', sid: s.id }; html = vPlan(s, p); }
+  else if (v.name === 'feed') { title = 'Acompanhamento'; html = vFeed(); }
   else if (v.name === 'exercises') { title = 'Biblioteca de exercícios'; html = vExercises(); }
-  else if (v.name === 'settings') { title = 'Configurações'; html = vSettings(); }
-  else { view = { name: 'students' }; return render(); }
-  $('#top').innerHTML = `${back ? `<button data-act="back">‹ Voltar</button>` : ''}<h1>${esc(title)}</h1>`;
+  else if (v.name === 'settings') { title = 'Ajustes'; html = vSettings(); }
+  else { S.view = { name: 'students' }; return render(); }
+  $('#top').innerHTML = `${back ? `<button data-act="back">‹ Voltar</button>` : ''}<h1>${esc(title)}</h1>${v.name === 'plan' ? '<span class="saving" id="saving"></span>' : ''}`;
   $('#top')._back = back;
   $('#app').innerHTML = html;
   const tab = ['students', 'student', 'plan'].includes(v.name) ? 'students' : v.name;
+  const n = unseen().length;
   $('#tabs').hidden = false;
-  $('#tabs').innerHTML = [['students', '👥', 'Alunos'], ['exercises', '🎬', 'Exercícios'], ['settings', '⚙️', 'Ajustes']]
-    .map(([k, i, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-k="${k}"><span>${i}</span>${l}</button>`).join('');
+  $('#tabs').innerHTML = [['students', '👥', 'Alunos'], ['feed', '📈', 'Acompanhar'], ['exercises', '🎬', 'Exercícios'], ['settings', '⚙️', 'Ajustes']]
+    .map(([k, i, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-k="${k}"><span>${i}</span>${l}${k === 'feed' && n ? `<b class="badge">${n}</b>` : ''}</button>`).join('');
+  if (v.name === 'student' && s) markSeen(logsOf(s.id));
 }
-
 const empty = (t, d) => `<div class="empty"><b>${esc(t)}</b>${esc(d)}</div>`;
 
-function vStudents() {
-  const list = db.students.map(s => `
-    <button class="card row" data-act="openStudent" data-id="${s.id}">
-      <div class="avatar">${esc(initials(s.name))}</div>
-      <div class="grow"><b>${esc(s.name)}</b><small>${esc(s.goal || 'Sem objetivo definido')} · ${s.plans.length} treino(s)</small></div>
-      <span class="chev">›</span>
-    </button>`).join('');
-  return `<div class="toolbar"><h2>Alunos</h2><button class="btn primary" data-act="newStudent">+ Novo aluno</button></div>
-    ${list || empty('Nenhum aluno ainda', 'Cadastre seu primeiro aluno para montar as séries dele.')}`;
+function statusOf(s) {
+  if (!s.user_id) return `<span class="st">⏳ Convite pendente</span>`;
+  const last = logsOf(s.id)[0];
+  if (!last) return `<span class="st warn">Ainda não treinou</span>`;
+  const d = daysAgo(last.done_at);
+  return `<span class="st ${d <= 3 ? 'ok' : d <= 7 ? 'warn' : 'bad'}">Treinou ${agoText(last.done_at)}</span>`;
 }
 
+/* ---------- personal: alunos ---------- */
+function vStudents() {
+  const list = S.students.map(s => {
+    const nNew = logsOf(s.id).filter(l => !l.trainer_seen).length;
+    return `<button class="card row" data-act="openStudent" data-id="${s.id}">
+      <div class="avatar">${esc(initials(s.name))}</div>
+      <div class="grow"><b>${esc(s.name)}</b> ${nNew ? `<span class="badge">${nNew} novo${nNew > 1 ? 's' : ''}</span>` : ''}
+        <small>${esc(s.goal || 'Sem objetivo definido')} · ${plansOf(s.id).length} treino(s)</small>${statusOf(s)}</div>
+      <span class="chev">›</span></button>`;
+  }).join('');
+  return `<div class="toolbar"><h2>Alunos</h2><button class="btn primary" data-act="newStudent">+ Novo aluno</button></div>
+    ${list || empty('Nenhum aluno ainda', 'Cadastre seu primeiro aluno, monte o treino e envie o convite.')}`;
+}
+
+function statsHtml(logs) {
+  const now = Date.now();
+  const in7 = logs.filter(l => now - new Date(l.done_at) < 7 * 864e5).length;
+  const l30 = logs.filter(l => now - new Date(l.done_at) < 30 * 864e5);
+  const effs = l30.map(l => l.effort).filter(Boolean);
+  const avg = effs.length ? (effs.reduce((a, b) => a + b, 0) / effs.length).toFixed(1) : '–';
+  const weeks = Array.from({ length: 8 }, (_, i) => {
+    const end = now - i * 7 * 864e5, start = end - 7 * 864e5;
+    return logs.filter(l => { const t = new Date(l.done_at).getTime(); return t > start && t <= end; }).length;
+  }).reverse();
+  const max = Math.max(3, ...weeks);
+  return `<div class="stats">
+      <div class="stat"><b>${in7}</b><small>treinos em 7 dias</small></div>
+      <div class="stat"><b>${l30.length}</b><small>treinos em 30 dias</small></div>
+      <div class="stat"><b>${avg}</b><small>esforço médio</small></div>
+    </div>
+    <div class="card"><small>Treinos por semana (últimas 8)</small>
+      <div class="bars">${weeks.map((w, i) => `<div title="${w} treino(s)">${w || ''}<i style="height:${Math.round(w / max * 100)}%"></i></div>`).join('')}</div>
+    </div>`;
+}
+function logCard(l, withName) {
+  const s = withName && studentById(l.student_id);
+  const det = (l.details || []);
+  return `<div class="card ${l.trainer_seen || S.role !== 'trainer' ? '' : 'new'}">
+    <div class="row"><div class="grow"><b>${s ? esc(s.name) + ' · ' : ''}${esc(l.plan_name)}</b>
+      <small>${fmtDateTime(l.done_at)}${l.duration_min ? ` · ${l.duration_min} min` : ''} · ${det.reduce((a, d) => a + (d.done || 0), 0)}/${det.reduce((a, d) => a + (d.total || 0), 0)} séries</small></div>
+      ${l.effort ? `<span class="eff">💪 ${l.effort}/10</span>` : ''}</div>
+    ${l.comment ? `<p class="quote">“${esc(l.comment)}”</p>` : ''}
+    ${det.length ? `<details><summary>Ver exercícios e cargas</summary><table>${det.map(d => `<tr><td>${esc(d.name)}</td><td>${d.done}/${d.total} séries${d.load ? ' · ' + esc(d.load) : ''}</td></tr>`).join('')}</table></details>` : ''}
+  </div>`;
+}
+function inviteLink(s) { return baseUrl() + '#convite=' + s.invite_code; }
+function inviteMsg(s) {
+  return `Olá ${s.name.split(' ')[0]}! Seu treino está pronto no app 💪\n\n1. Abra: ${inviteLink(s)}\n2. Toque em “Criar conta” e cadastre seu e-mail e uma senha.\n\nSe pedir, seu código é: ${s.invite_code}`;
+}
 function vStudent(s) {
-  const plans = s.plans.map(p => `
+  const plans = plansOf(s.id).map(p => `
     <button class="card row" data-act="openPlan" data-id="${p.id}">
       <div class="avatar">${esc(p.name.replace(/^Treino\s*/i, '').slice(0, 2) || 'T')}</div>
-      <div class="grow"><b>${esc(p.name)}</b><small>${p.items.length} exercício(s)${p.focus ? ' · ' + esc(p.focus) : ''}</small></div>
-      <span class="chev">›</span>
-    </button>`).join('');
+      <div class="grow"><b>${esc(p.name)}</b><small>${(p.items || []).length} exercício(s)${p.focus ? ' · ' + esc(p.focus) : ''}</small></div>
+      <span class="chev">›</span></button>`).join('');
+  const logs = logsOf(s.id);
   return `
     <div class="card"><div class="row"><div class="avatar">${esc(initials(s.name))}</div>
-      <div class="grow"><h3>${esc(s.name)}</h3><small>${esc(s.goal || 'Sem objetivo definido')}</small></div>
+      <div class="grow"><h3>${esc(s.name)}</h3><small>${esc(s.goal || 'Sem objetivo definido')}</small>${statusOf(s)}</div>
       <button class="icon" data-act="editStudent" aria-label="Editar aluno">✎</button></div>
-      ${s.notes ? `<p class="muted" style="margin:10px 0 0">${esc(s.notes)}</p>` : ''}
+      ${s.notes ? `<p class="muted" style="margin:10px 0 0">🔒 ${esc(s.notes)}</p>` : ''}
     </div>
+    ${!s.user_id ? `<div class="card"><h3>Convite para o app</h3>
+        <p class="muted" style="margin:6px 0 0">Envie para ${esc(s.name.split(' ')[0])}. Ao criar a conta pelo link, o treino aparece na hora.</p>
+        <div class="code">${esc(s.invite_code)}</div>
+        <div class="actions" style="margin-top:0">
+          <a class="btn primary" href="https://wa.me/?text=${encodeURIComponent(inviteMsg(s))}" target="_blank" rel="noopener">WhatsApp</a>
+          <button class="btn" data-act="copyInvite">Copiar mensagem</button>
+        </div></div>` : ''}
     <div class="toolbar"><h2>Treinos</h2><button class="btn" data-act="newPlan">+ Novo treino</button></div>
     ${plans || empty('Nenhum treino', 'Crie o Treino A, B, C… e adicione os exercícios.')}
-    <button class="btn primary block" data-act="share" ${s.plans.length ? '' : 'disabled'}>📲 Enviar treino para o aluno</button>
-    <button class="btn block" data-act="preview" ${s.plans.length ? '' : 'disabled'}>👀 Ver como o aluno vai ver</button>
-    <button class="btn block danger" data-act="delStudent">Excluir aluno</button>`;
+    <div class="toolbar"><h2>Acompanhamento</h2></div>
+    ${statsHtml(logs)}
+    ${logs.slice(0, 30).map(l => logCard(l)).join('') || empty('Nenhum treino registrado', s.user_id ? 'Quando o aluno finalizar um treino no app, ele aparece aqui.' : 'Envie o convite para o aluno começar.')}
+    <div style="margin-top:20px">
+      ${s.user_id ? `<button class="btn block" data-act="resetInvite">🔑 Gerar novo convite (desliga o acesso atual)</button>` : ''}
+      <button class="btn block danger" data-act="delStudent">Excluir aluno</button>
+    </div>`;
 }
 
+/* ---------- personal: editor de treino ---------- */
 function vPlan(s, p) {
-  const items = p.items.map((it, i) => {
-    const ex = exById(it.exId);
+  const items = (p.items || []).map((it, i) => {
+    const ex = exById(it.ex);
     return `<div class="card item">
       <div class="row">
         <div class="grow"><b>${i + 1}. ${esc(ex ? ex.name : 'Exercício removido')}</b>
-          <small>${esc(ex ? ex.group : '')}${ex && ex.video ? ' · 🎬 com vídeo' : ' · sem vídeo'}</small></div>
+          <small>${esc(ex ? ex.grp : '')}${ex && ex.video ? ' · 🎬 com vídeo' : ' · sem vídeo'}</small></div>
         <button class="icon" data-act="moveItem" data-i="${i}" data-d="-1" aria-label="Subir">↑</button>
         <button class="icon" data-act="moveItem" data-i="${i}" data-d="1" aria-label="Descer">↓</button>
         <button class="icon" data-act="delItem" data-i="${i}" aria-label="Remover">✕</button>
@@ -289,110 +559,246 @@ function vPlan(s, p) {
   return `
     <label>Nome do treino</label><input data-pf="name" value="${esc(p.name)}">
     <label>Foco / descrição</label><input data-pf="focus" value="${esc(p.focus || '')}" placeholder="Ex.: Inferiores + core">
-    <div class="toolbar" style="margin-top:18px"><h2>Exercícios</h2><button class="btn primary" data-act="addItem">+ Adicionar</button></div>
+    <div class="toolbar"><h2>Exercícios</h2><button class="btn primary" data-act="addItem">+ Adicionar</button></div>
     ${items || empty('Treino vazio', 'Toque em “+ Adicionar” e escolha os exercícios da sua biblioteca.')}
+    <p class="muted">As alterações são salvas automaticamente e aparecem na hora para o aluno.</p>
     <button class="btn block" data-act="dupPlan">Duplicar treino</button>
     <button class="btn block danger" data-act="delPlan">Excluir treino</button>`;
 }
+let planSaveT = null, planSaveFn = null;
+function queuePlanSave(p) {
+  const el = $('#saving'); if (el) el.textContent = 'Salvando…';
+  clearTimeout(planSaveT);
+  planSaveFn = async () => {
+    planSaveT = null; planSaveFn = null;
+    try {
+      await api.updatePlan(p.id, { name: p.name, focus: p.focus, items: p.items, updated_at: new Date().toISOString() });
+      const e2 = $('#saving'); if (e2) e2.textContent = 'Salvo ✓';
+    } catch (e) { const e2 = $('#saving'); if (e2) e2.textContent = '⚠️ Não salvo'; toast('Erro ao salvar: ' + ptError(e)); }
+  };
+  planSaveT = setTimeout(planSaveFn, 700);
+}
+function flushPlanSave() { if (planSaveT) { clearTimeout(planSaveT); planSaveFn(); } }
+window.addEventListener('pagehide', flushPlanSave);
 
+/* ---------- personal: acompanhamento geral ---------- */
+function vFeed() {
+  const nw = unseen();
+  const inactive = S.students.filter(s => s.user_id).map(s => ({ s, last: logsOf(s.id)[0] }))
+    .filter(x => !x.last || daysAgo(x.last.done_at) >= 7);
+  const pending = S.students.filter(s => !s.user_id);
+  return `
+    <div class="toolbar"><h2>Novos registros</h2>${nw.length ? `<button class="btn" data-act="seenAll">Marcar como vistos</button>` : ''}</div>
+    ${nw.map(l => logCard(l, true)).join('') || empty('Tudo em dia ✓', 'Nenhum treino novo desde a última vez.')}
+    ${inactive.length ? `<div class="toolbar"><h2>Sem treinar há 7+ dias</h2></div>
+      ${inactive.map(({ s, last }) => `<button class="card row" data-act="openStudent" data-id="${s.id}"><div class="avatar">${esc(initials(s.name))}</div>
+        <div class="grow"><b>${esc(s.name)}</b><small>${last ? 'Último treino ' + agoText(last.done_at) : 'Ainda não registrou treinos'}</small></div><span class="chev">›</span></button>`).join('')}` : ''}
+    ${pending.length ? `<div class="toolbar"><h2>Convites pendentes</h2></div>
+      ${pending.map(s => `<button class="card row" data-act="openStudent" data-id="${s.id}"><div class="avatar">${esc(initials(s.name))}</div>
+        <div class="grow"><b>${esc(s.name)}</b><small>Ainda não criou a conta no app</small></div><span class="chev">›</span></button>`).join('')}` : ''}
+    <div class="toolbar"><h2>Histórico recente</h2></div>
+    ${S.logs.filter(l => l.trainer_seen).slice(0, 30).map(l => logCard(l, true)).join('') || empty('Sem histórico', 'Os treinos finalizados pelos alunos aparecem aqui.')}`;
+}
+async function markSeen(logs) {
+  const ids = logs.filter(l => !l.trainer_seen).map(l => l.id);
+  if (!ids.length) return;
+  try {
+    await api.markSeen(ids); S.logs.forEach(l => { if (ids.includes(l.id)) l.trainer_seen = true; });
+    const n = unseen().length, badge = $('nav .badge');
+    if (badge) { if (n) badge.textContent = n; else badge.remove(); }
+  } catch {}
+}
+
+/* ---------- personal: exercícios e ajustes ---------- */
 function vExercises() {
   const q = exFilter.q.toLowerCase();
-  const list = db.exercises.filter(e => (!exFilter.g || e.group === exFilter.g) && (!q || e.name.toLowerCase().includes(q)));
+  const list = S.exercises.filter(e => (!exFilter.g || e.grp === exFilter.g) && (!q || e.name.toLowerCase().includes(q)));
   const byG = {};
-  list.forEach(e => (byG[e.group || 'Outros'] ||= []).push(e));
+  list.forEach(e => (byG[e.grp || 'Outros'] ||= []).push(e));
   const body = Object.keys(byG).sort((a, b) => a.localeCompare(b, 'pt')).map(g => `
     <div class="group-title">${esc(g)}</div>
     ${byG[g].sort((a, b) => a.name.localeCompare(b.name, 'pt')).map(e => `
       <button class="card row" data-act="editEx" data-id="${e.id}">
         <div class="grow"><b>${esc(e.name)}</b><small>${e.video ? '🎬 vídeo cadastrado' : '⚠️ sem vídeo'}</small></div><span class="chev">›</span>
       </button>`).join('')}`).join('');
-  const noVideo = db.exercises.filter(e => !e.video).length;
+  const noVideo = S.exercises.filter(e => !e.video).length;
   return `<div class="toolbar"><h2>Exercícios</h2><button class="btn primary" data-act="newEx">+ Novo</button></div>
+    ${!S.exercises.length ? `<div class="card"><p style="margin:0 0 10px">Sua biblioteca está vazia. Quer começar com exercícios comuns (você coloca seus vídeos depois)?</p><button class="btn primary" data-act="seedEx">Adicionar exercícios básicos</button></div>` : ''}
     ${noVideo ? `<p class="muted" style="margin-top:-6px">${noVideo} exercício(s) ainda sem o seu vídeo.</p>` : ''}
     <input id="exq" type="search" placeholder="Buscar exercício…" value="${esc(exFilter.q)}">
     <div class="chips" style="margin-top:10px">
       <button class="chip ${!exFilter.g ? 'on' : ''}" data-act="exGroup" data-g="">Todos</button>
       ${groups().map(g => `<button class="chip ${exFilter.g === g ? 'on' : ''}" data-act="exGroup" data-g="${esc(g)}">${esc(g)}</button>`).join('')}
     </div>
-    <div id="exlist">${body || empty('Nada encontrado', 'Tente outra busca ou cadastre um novo exercício.')}</div>`;
+    ${body || (S.exercises.length ? empty('Nada encontrado', 'Tente outra busca ou cadastre um novo exercício.') : '')}`;
 }
-
 function vSettings() {
   return `
     <div class="card"><h3>Seu perfil</h3>
-      <label>Seu nome (aparece para o aluno)</label><input data-sf="trainer" value="${esc(db.trainer)}" placeholder="Ex.: Prof. Leo">
+      <label>Seu nome (aparece para os alunos)</label><input data-sf="name" value="${esc(S.trainer.name)}" placeholder="Ex.: Prof. Leo">
+      <small style="margin-top:8px">Conta: ${esc(S.user.email)}</small>
     </div>
     <div class="card"><h3>Como colocar seus vídeos</h3>
       <p class="muted" style="margin:8px 0 0">1. Grave o vídeo do exercício no celular.<br>
       2. Suba no <b>YouTube como “Não listado”</b> (só quem tem o link vê) — ou no Google Drive / Vimeo.<br>
-      3. Copie o link e cole no exercício, na aba 🎬 Exercícios.<br>
-      O vídeo aparece dentro do treino do aluno, com o player embutido.</p>
+      3. Copie o link e cole no exercício, na aba 🎬 Exercícios.</p>
     </div>
-    <div class="card"><h3>Backup</h3>
-      <p class="muted" style="margin:8px 0 10px">Seus dados ficam salvos neste aparelho. Faça backup de vez em quando ou para passar para outro celular/computador.</p>
-      <button class="btn block" data-act="export">⬇️ Baixar backup</button>
-      <button class="btn block" data-act="import">⬆️ Restaurar backup</button>
+    <div class="card"><h3>Importar dados da versão anterior</h3>
+      <p class="muted" style="margin:8px 0 10px">Se você usou a versão sem login e baixou um backup (.json), importe aqui.</p>
+      <button class="btn block" data-act="import">⬆️ Importar backup</button>
       <input type="file" id="importFile" accept="application/json,.json" hidden>
-    </div>`;
+    </div>
+    <button class="btn block" data-act="logout">Sair da conta</button>`;
 }
 
-/* ===================== tela do aluno ===================== */
-const alunoKey = () => 'mp_a_' + (aluno ? (aluno.s || '').toLowerCase().replace(/\W+/g, '_') : '');
-function progress() {
-  const k = alunoKey() + '_prog_' + alunoPlan;
-  const pr = store.get(k, null);
-  return pr && pr.date === today() ? pr : { date: today(), done: {} };
+/* ===================== app do aluno ===================== */
+const progKey = pid => `mp_prog_${S.user.id}_${pid}`;
+function progress(pid) {
+  const pr = store.get(progKey(pid), null);
+  return pr && pr.date === localDay() ? pr : { date: localDay(), done: {}, loads: {}, start: null };
 }
-function saveProgress(pr) { if (!alunoPreview) store.set(alunoKey() + '_prog_' + alunoPlan, pr); else progress._mem = pr; }
-function workoutHist() { return alunoPreview ? [] : store.get(alunoKey() + '_hist', []); }
-
-function renderAluno() {
-  const A = aluno;
-  $('#tabs').hidden = true;
-  $('#tabs').innerHTML = '';
-  $('#top').innerHTML = `${alunoPreview ? `<button data-act="exitPreview">‹ Sair</button>` : ''}<h1>${alunoPreview ? 'Pré-visualização do aluno' : 'Meu Treino'}</h1>`;
-  if (!A || !A.p || !A.p.length) { $('#app').innerHTML = empty('Nenhum treino', 'Peça para seu personal enviar o link do treino.'); return; }
-  if (alunoPlan >= A.p.length) alunoPlan = 0;
-  const P = A.p[alunoPlan];
-  const pr = alunoPreview ? (progress._mem && progress._mem.plan === alunoPlan ? progress._mem : { date: today(), done: {}, plan: alunoPlan }) : progress();
-  const hist = workoutHist();
-  const last = hist[hist.length - 1];
-  const items = P.i.map((it, i) => {
-    const n = Math.min(Math.max(parseInt(it.s) || 3, 1), 12);
-    const done = pr.done[i] || [];
-    const complete = done.filter(Boolean).length >= n;
-    return `<div class="card item ${complete ? 'complete' : ''}" id="it${i}">
-      <h3>${i + 1}. ${esc(it.n)}</h3><small>${esc(it.g || '')}</small>
-      <div class="presc"><span>${n} séries</span><span>${esc(it.r || '-')} reps</span>${it.l ? `<span>🏋️ ${esc(it.l)}</span>` : ''}${parseInt(it.rt) ? `<span>⏱ ${parseInt(it.rt)}s descanso</span>` : ''}</div>
-      ${it.o ? `<p class="obs">${esc(it.o)}</p>` : ''}
-      ${videoEmbed(it.v) ? `<div class="video pending" id="v${i}"><button data-act="showVideo" data-i="${i}">▶ Ver vídeo de execução</button></div>` : ''}
-      ${it.d ? `<details><summary>Como executar</summary><p style="margin:6px 0 0">${esc(it.d)}</p></details>` : ''}
+const nSets = it => Math.min(Math.max(parseInt(it.sets) || 3, 1), 12);
+function lastLoad(plan, exName) {
+  for (const l of S.logs) {
+    if (l.plan_id !== plan.id) continue;
+    const d = (l.details || []).find(x => x.name === exName && x.load);
+    if (d) return d.load;
+  }
+  return '';
+}
+let curPlan = 0;
+function renderStudentApp() {
+  const v = S.view.name;
+  $('#tabs').hidden = false;
+  $('#tabs').innerHTML = [['treino', '🏋️', 'Treino'], ['historico', '📅', 'Histórico'], ['conta', '👤', 'Conta']]
+    .map(([k, i, l]) => `<button class="${v === k ? 'on' : ''}" data-act="tab" data-k="${k}"><span>${i}</span>${l}</button>`).join('');
+  $('#top').innerHTML = `<h1>${v === 'historico' ? 'Meu histórico' : v === 'conta' ? 'Minha conta' : 'Meu treino'}</h1>`;
+  const off = S.offline ? `<div class="offline">Sem internet — mostrando o último treino salvo</div>` : '';
+  const pend = store.get('mp_pending_' + S.user.id, []).length;
+  const pendHtml = pend ? `<div class="offline">${pend} treino(s) aguardando internet para enviar ao personal</div>` : '';
+  if (v === 'historico') { $('#app').innerHTML = off + pendHtml + vStudentHistory(); return; }
+  if (v === 'conta') {
+    $('#app').innerHTML = `<div class="card"><div class="row"><div class="avatar">${esc(initials(S.me.name))}</div>
+      <div class="grow"><h3>${esc(S.me.name)}</h3><small>${esc(S.user.email)}</small></div></div>
+      <p class="muted" style="margin:10px 0 0">Personal: <b>${esc(S.me.trainer_name || '—')}</b>${S.me.goal ? `<br>Objetivo: ${esc(S.me.goal)}` : ''}</p></div>
+      <button class="btn block" data-act="reload">🔄 Atualizar treino</button>
+      <button class="btn block" data-act="logout">Sair da conta</button>`;
+    return;
+  }
+  const plans = S.plans;
+  if (!plans.length) {
+    $('#app').innerHTML = off + `<div class="hello"><h2>Olá, ${esc(S.me.name.split(' ')[0])}! 👋</h2><small>Sua conta está ligada a ${esc(S.me.trainer_name || 'seu personal')}.</small></div>
+      ${empty('Seu treino ainda não está pronto', 'Assim que seu personal montar, ele aparece aqui.')}<button class="btn block" data-act="reload">🔄 Atualizar</button>`;
+    return;
+  }
+  if (curPlan >= plans.length) curPlan = 0;
+  const P = plans[curPlan];
+  const pr = progress(P.id);
+  const last = S.logs[0];
+  const items = (P.items || []).map((it, i) => {
+    const ex = exById(it.ex) || { name: 'Exercício', grp: '', video: '', notes: '' };
+    const n = nSets(it), done = pr.done[i] || [];
+    const load = pr.loads[i] ?? (lastLoad(P, ex.name) || it.load || '');
+    return `<div class="card item ${done.filter(Boolean).length >= n ? 'complete' : ''}" id="it${i}">
+      <h3>${i + 1}. ${esc(ex.name)}</h3><small>${esc(ex.grp || '')}</small>
+      <div class="presc"><span>${n} séries</span><span>${esc(it.reps || '-')} reps</span>${it.load ? `<span>🏋️ ${esc(it.load)}</span>` : ''}${parseInt(it.rest) ? `<span>⏱ ${parseInt(it.rest)}s descanso</span>` : ''}</div>
+      ${it.obs ? `<p class="obs">${esc(it.obs)}</p>` : ''}
+      ${videoEmbed(ex.video) ? `<div class="video pending" id="v${i}"><button data-act="showVideo" data-i="${i}">▶ Ver vídeo de execução</button></div>` : ''}
+      ${ex.notes ? `<details><summary>Como executar</summary><p style="margin:6px 0 0">${esc(ex.notes)}</p></details>` : ''}
       <div class="sets">${Array.from({ length: n }, (_, k) => `<button class="set ${done[k] ? 'done' : ''}" data-act="toggleSet" data-i="${i}" data-k="${k}" aria-label="Série ${k + 1}">${k + 1}</button>`).join('')}</div>
+      <div class="loadin"><label for="ld${i}">Carga usada</label><input id="ld${i}" data-load="${i}" value="${esc(load)}" placeholder="ex.: 20 kg"></div>
     </div>`;
   }).join('');
-  $('#app').innerHTML = `
-    <div class="hello"><h2>Olá, ${esc((A.s || '').split(' ')[0] || 'aluno')}! 💪</h2>
-      <small>${A.t ? 'Treino montado por ' + esc(A.t) : 'Seu treino personalizado'}${A.g ? ' · ' + esc(A.g) : ''}</small>
-      ${last ? `<small style="margin-top:6px">${hist.length} treino(s) concluído(s) · último em ${fmtDate(last.date)} (${esc(last.plan)})</small>` : ''}
+  $('#app').innerHTML = off + pendHtml + `
+    <div class="hello"><h2>Olá, ${esc(S.me.name.split(' ')[0])}! 💪</h2>
+      <small>Treino montado por ${esc(S.me.trainer_name || 'seu personal')}${S.me.goal ? ' · ' + esc(S.me.goal) : ''}</small>
+      ${last ? `<small style="margin-top:6px">Último treino: ${esc(last.plan_name)} ${agoText(last.done_at)}</small>` : ''}
     </div>
-    ${A.p.length > 1 ? `<div class="chips">${A.p.map((p, k) => `<button class="chip ${k === alunoPlan ? 'on' : ''}" data-act="alunoPlan" data-k="${k}">${esc(p.n)}</button>`).join('')}</div>` : ''}
-    ${P.f ? `<p class="muted" style="margin:0 0 6px">${esc(P.f)}</p>` : ''}
+    ${plans.length > 1 ? `<div class="chips">${plans.map((p, k) => `<button class="chip ${k === curPlan ? 'on' : ''}" data-act="curPlan" data-k="${k}">${esc(p.name)}</button>`).join('')}</div>` : ''}
+    ${P.focus ? `<p class="muted" style="margin:0 0 6px">${esc(P.focus)}</p>` : ''}
     <div class="muted" id="progTxt"></div><div class="progress"><i id="progBar"></i></div>
     ${items || empty('Treino vazio', 'Seu personal ainda não adicionou exercícios aqui.')}
-    ${P.i.length ? `<button class="btn primary block" data-act="finish">✅ Finalizar treino</button>` : ''}
-    <p class="muted" style="text-align:center">Toque no número da série quando terminar — o descanso começa sozinho.</p>
-    ${!alunoPreview ? `<button class="footer-link" data-act="trainerMode">Área do personal</button>` : ''}`;
-  updateProgress(pr);
+    ${(P.items || []).length ? `<button class="btn primary block" data-act="finish">✅ Finalizar treino</button>` : ''}
+    <p class="muted" style="text-align:center">Toque no número da série quando terminar — o descanso começa sozinho.</p>`;
+  updateProgress(P, pr);
 }
-function updateProgress(pr) {
-  const P = aluno.p[alunoPlan];
+function updateProgress(P, pr) {
   let total = 0, d = 0;
-  P.i.forEach((it, i) => { const n = Math.min(Math.max(parseInt(it.s) || 3, 1), 12); total += n; d += (pr.done[i] || []).slice(0, n).filter(Boolean).length; });
+  (P.items || []).forEach((it, i) => { const n = nSets(it); total += n; d += (pr.done[i] || []).slice(0, n).filter(Boolean).length; });
   const pct = total ? Math.round(d / total * 100) : 0;
   const bar = $('#progBar'), txt = $('#progTxt');
   if (bar) bar.style.width = pct + '%';
   if (txt) txt.textContent = `${d} de ${total} séries feitas hoje (${pct}%)`;
+  return { d, total };
 }
+function vStudentHistory() {
+  const pending = store.get('mp_pending_' + S.user.id, []);
+  const all = [...pending.map(p => ({ ...p, trainer_seen: true })), ...S.logs];
+  const month = all.filter(l => new Date(l.done_at).getMonth() === new Date().getMonth() && new Date(l.done_at).getFullYear() === new Date().getFullYear()).length;
+  return `<div class="hello"><h2>${month} treino${month === 1 ? '' : 's'} este mês 🔥</h2><small>Continue assim! Seu personal acompanha cada treino.</small></div>
+    ${statsHtml(all)}
+    <div class="toolbar"><h2>Treinos concluídos</h2></div>
+    ${all.slice(0, 60).map(l => logCard(l)).join('') || empty('Nenhum treino ainda', 'Finalize seu primeiro treino para começar o histórico.')}`;
+}
+function finishDialog() {
+  const P = S.plans[curPlan], pr = progress(P.id);
+  const { d, total } = updateProgress(P, pr);
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<form method="dialog" class="dlg" id="finForm"><h3>Finalizar ${esc(P.name)}</h3>
+    <p class="muted">${d} de ${total} séries feitas.${d < total ? ' Tudo bem — registre mesmo assim.' : ' Mandou bem! 🎉'}</p>
+    <label>Como foi o esforço? (1 = muito leve · 10 = máximo)</label>
+    <div class="effort">${Array.from({ length: 10 }, (_, k) => `<button type="button" data-eff="${k + 1}">${k + 1}</button>`).join('')}</div>
+    <label>Comentário para o personal (opcional)</label>
+    <textarea name="comment" placeholder="Ex.: senti o joelho no agachamento, aumentei a carga no supino…"></textarea>
+    <div class="actions"><button value="cancel" class="btn" formnovalidate>Voltar</button><button value="ok" class="btn primary">Salvar treino</button></div></form>`;
+  let effort = null;
+  dlg.querySelectorAll('[data-eff]').forEach(b => b.onclick = () => {
+    effort = +b.dataset.eff; dlg.querySelectorAll('[data-eff]').forEach(x => x.classList.toggle('on', x === b));
+  });
+  $('#finForm').onsubmit = e => {
+    if (!e.submitter || e.submitter.value !== 'ok') return;
+    const log = {
+      student_id: S.me.id, plan_id: P.id, plan_name: P.name, done_at: new Date().toISOString(),
+      duration_min: pr.start ? Math.min(300, Math.max(1, Math.round((Date.now() - pr.start) / 60000))) : null,
+      effort, comment: e.target.comment.value.trim(),
+      details: (P.items || []).map((it, i) => {
+        const ex = exById(it.ex) || { name: 'Exercício' };
+        return { name: ex.name, done: (pr.done[i] || []).slice(0, nSets(it)).filter(Boolean).length, total: nSets(it), load: (pr.loads[i] ?? (lastLoad(P, ex.name) || it.load || '')).trim() };
+      })
+    };
+    saveLog(log);
+  };
+  dlg.showModal();
+}
+async function saveLog(log) {
+  const P = S.plans[curPlan];
+  store.del(progKey(P.id));
+  try {
+    await api.addLog(log);
+    S.logs.unshift({ ...log, id: 'local-' + Date.now(), trainer_seen: false });
+    toast(`${P.name} concluído e enviado ao personal! 🎉`);
+  } catch {
+    const k = 'mp_pending_' + S.user.id;
+    store.set(k, [...store.get(k, []), log]);
+    toast('Sem internet: o treino será enviado quando a conexão voltar.');
+  }
+  store.set('mp_cache_' + S.user.id, { me: S.me, plans: S.plans, exercises: S.exercises, logs: S.logs });
+  render(); window.scrollTo(0, 0);
+}
+async function flushPending() {
+  if (!S.user || S.role !== 'student') return;
+  const k = 'mp_pending_' + S.user.id;
+  const pend = store.get(k, []);
+  if (!pend.length) return;
+  const left = [];
+  for (const log of pend) {
+    try { await api.addLog(log); S.logs.unshift({ ...log, id: 'local-' + Math.random(), trainer_seen: false }); } catch { left.push(log); }
+  }
+  store.set(k, left);
+  S.logs.sort((a, b) => new Date(b.done_at) - new Date(a.done_at));
+  if (left.length < pend.length) { toast('Treinos pendentes enviados ao personal ✓'); render(); }
+}
+window.addEventListener('online', flushPending);
 
 /* ===================== cronômetro de descanso ===================== */
 let timerInt = null, timerEnd = 0, audioCtx = null;
@@ -426,7 +832,7 @@ function startTimer(sec) {
   tick(); timerInt = setInterval(tick, 250);
 }
 
-/* ===================== diálogos ===================== */
+/* ===================== diálogos (personal) ===================== */
 function field(f, val) {
   const v = esc(val ?? '');
   if (f.type === 'textarea') return `<label>${esc(f.label)}</label><textarea name="${f.k}" placeholder="${esc(f.ph || '')}">${v}</textarea>`;
@@ -435,13 +841,15 @@ function field(f, val) {
 }
 function formDialog(title, fields, values, onSave, extra = '', extraBtn = '') {
   const dlg = $('#dlg');
-  dlg.innerHTML = `<form method="dialog" class="dlg"><h3>${esc(title)}</h3>${fields.map(f => field(f, values[f.k])).join('')}${extra}
-    <div class="actions">${extraBtn}<button value="cancel" class="btn" formnovalidate>Cancelar</button><button value="ok" class="btn primary">Salvar</button></div></form>`;
+  dlg.innerHTML = `<form class="dlg"><h3>${esc(title)}</h3>${fields.map(f => field(f, values[f.k])).join('')}${extra}
+    <div class="actions">${extraBtn}<button type="button" class="btn" data-act="closeDlg">Cancelar</button><button class="btn primary">Salvar</button></div></form>`;
   const form = dlg.querySelector('form');
-  form.onsubmit = e => {
-    if (!e.submitter || e.submitter.value !== 'ok') return;
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const btn = form.querySelector('button.primary'); btn.disabled = true;
     const data = {}; fields.forEach(f => data[f.k] = form.elements[f.k].value.trim());
-    onSave(data);
+    try { await onSave(data); if (dlg.open) dlg.close(); }
+    catch (er) { toast('Erro: ' + ptError(er)); btn.disabled = false; }
   };
   dlg.showModal();
   return form;
@@ -453,16 +861,15 @@ const studentFields = [
 ];
 function exerciseDialog(ex, after) {
   const isNew = !ex;
-  ex ||= { id: uid(), name: '', group: '', video: '', notes: '' };
   const form = formDialog(isNew ? 'Novo exercício' : 'Editar exercício', [
     { k: 'name', label: 'Nome', req: true, ph: 'Ex.: Agachamento sumô' },
-    { k: 'group', label: 'Grupo muscular', list: groups(), ph: 'Ex.: Pernas' },
+    { k: 'grp', label: 'Grupo muscular', list: groups(), ph: 'Ex.: Pernas' },
     { k: 'video', label: 'Link do seu vídeo (YouTube, Drive, Vimeo ou .mp4)', type: 'url', ph: 'https://youtu.be/…' },
     { k: 'notes', label: 'Como executar (aparece para o aluno)', type: 'textarea' }
-  ], ex, d => {
-    Object.assign(ex, d, { group: d.group || 'Outros' });
-    if (isNew) db.exercises.push(ex);
-    save(); toast('Exercício salvo'); after ? after(ex) : render();
+  ], ex || {}, async d => {
+    d.grp = d.grp || 'Outros';
+    if (isNew) { const row = await api.addExercise(d); S.exercises.push(row); toast('Exercício salvo'); after ? after(row) : render(); }
+    else { await api.updateExercise(ex.id, d); Object.assign(ex, d); toast('Exercício salvo'); render(); }
   }, `<div id="vprev"></div>`, isNew ? '' : `<button type="button" class="btn danger" data-act="delEx" data-id="${ex.id}" style="margin-right:auto">Excluir</button>`);
   const upd = () => {
     const e = videoEmbed(form.elements.video.value);
@@ -480,170 +887,174 @@ function pickerDialog(plan) {
     <div class="actions"><button class="btn" data-act="pickNew" style="margin-right:auto">+ Cadastrar novo</button><button class="btn primary" data-act="closeDlg">Concluir</button></div></div>`;
   const draw = () => {
     const q = $('#pq').value.toLowerCase();
-    $('#plist').innerHTML = db.exercises.filter(e => !q || e.name.toLowerCase().includes(q) || (e.group || '').toLowerCase().includes(q))
-      .sort((a, b) => (a.group + a.name).localeCompare(b.group + b.name, 'pt'))
-      .map(e => { const c = plan.items.filter(i => i.exId === e.id).length;
-        return `<button data-act="pick" data-id="${e.id}"><span><b>${esc(e.name)}</b><small>${esc(e.group)}${e.video ? ' · 🎬' : ''}</small></span><span>${c ? '✓ ' + c : '+'}</span></button>`; }).join('');
+    $('#plist').innerHTML = S.exercises.filter(e => !q || e.name.toLowerCase().includes(q) || (e.grp || '').toLowerCase().includes(q))
+      .sort((a, b) => (a.grp + a.name).localeCompare(b.grp + b.name, 'pt'))
+      .map(e => { const c = plan.items.filter(i => i.ex === e.id).length;
+        return `<button data-act="pick" data-id="${e.id}"><span><b>${esc(e.name)}</b><small>${esc(e.grp)}${e.video ? ' · 🎬' : ''}</small></span><span>${c ? '✓ ' + c : '+'}</span></button>`; }).join('')
+      || `<p class="muted">Nenhum exercício. Cadastre na aba Exercícios ou aqui em “+ Cadastrar novo”.</p>`;
   };
   dlg._draw = draw; dlg._plan = plan;
   $('#pq').addEventListener('input', draw);
   draw();
   if (!dlg.open) dlg.showModal();
 }
-function payloadFor(s) {
-  return {
-    v: 1, t: db.trainer, s: s.name, g: s.goal, at: Date.now(),
-    p: s.plans.map(p => ({ n: p.name, f: p.focus || '', i: p.items.map(it => { const e = exById(it.exId) || {};
-      return { n: e.name || 'Exercício', g: e.group || '', v: e.video || '', d: e.notes || '', s: it.sets, r: it.reps, l: it.load, rt: it.rest, o: it.obs }; }) }))
-  };
-}
-async function shareDialog(s) {
-  const code = await encode(payloadFor(s));
-  const base = location.href.split('#')[0].split('?')[0];
-  const link = base + '#a=' + code;
-  const msg = `Olá ${s.name.split(' ')[0]}! Seu treino está pronto 💪\nAbra no celular (dá para adicionar à tela inicial):\n${link}`;
-  const hosted = /^https?:$/.test(location.protocol) && !/^(localhost|127\.)/.test(location.hostname);
-  const dlg = $('#dlg');
-  dlg.innerHTML = `<div class="dlg"><h3>Enviar treino para ${esc(s.name)}</h3>
-    <p class="muted">O treino completo vai dentro do link. Sempre que você alterar o treino, envie o link de novo.</p>
-    ${hosted ? '' : `<p class="obs">⚠️ Para o aluno abrir o link, o app precisa estar publicado na internet (veja o LEIA-ME). Por enquanto, use “Ver como o aluno” para testar.</p>`}
-    <div class="share-link">${esc(link)}</div>
-    <div class="actions">
-      <a class="btn" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" style="text-decoration:none">WhatsApp</a>
-      <button class="btn" data-act="copyLink">Copiar link</button>
-      ${navigator.share ? `<button class="btn" data-act="nativeShare">Compartilhar…</button>` : ''}
-      <button class="btn primary" data-act="closeDlg">Fechar</button>
-    </div></div>`;
-  dlg._link = link; dlg._msg = msg;
-  dlg.showModal();
-}
+const BASIC = [['Agachamento livre', 'Pernas'], ['Leg press 45°', 'Pernas'], ['Cadeira extensora', 'Pernas'], ['Mesa flexora', 'Pernas'],
+  ['Elevação pélvica', 'Glúteos'], ['Supino reto com barra', 'Peito'], ['Crucifixo com halteres', 'Peito'], ['Puxada frontal', 'Costas'],
+  ['Remada baixa', 'Costas'], ['Desenvolvimento com halteres', 'Ombros'], ['Elevação lateral', 'Ombros'], ['Rosca direta', 'Bíceps'],
+  ['Tríceps na polia', 'Tríceps'], ['Prancha abdominal', 'Abdômen'], ['Panturrilha em pé', 'Panturrilha']];
+const newItem = ex => ({ ex, sets: '3', reps: '12', load: '', rest: '60', obs: '' });
 
 /* ===================== ações ===================== */
-const cur = () => {
-  const s = view.sid && db.students.find(x => x.id === view.sid);
-  return { s, p: s && view.pid && s.plans.find(x => x.id === view.pid) };
-};
+const cur = () => ({ s: S.view.sid && studentById(S.view.sid), p: S.view.pid && S.plans.find(x => x.id === S.view.pid) });
 const actions = {
   back: () => go($('#top')._back || { name: 'students' }),
-  tab: el => go({ name: el.dataset.k }),
-  newStudent: () => formDialog('Novo aluno', studentFields, {}, d => {
-    const s = { id: uid(), ...d, plans: [] }; db.students.push(s); save(); go({ name: 'student', sid: s.id });
+  tab: el => { if (S.role === 'student') { S.view = { name: el.dataset.k }; render(); window.scrollTo(0, 0); } else go({ name: el.dataset.k }); },
+  authTab: el => { authTab = el.dataset.k; authMsg = null; renderAuth(); },
+  logout: async () => { flushPlanSave(); try { await api.signOut(); } catch {} resetState(); renderAuth(); },
+  reload: () => location.reload(),
+  becomeTrainer: () => formDialog('Seu perfil de personal', [{ k: 'name', label: 'Seu nome (aparece para os alunos)', req: true, ph: 'Ex.: Prof. Leo' }], {}, async d => {
+    await api.createTrainer(d.name); $('#dlg').close(); await enter(S.user);
+  }),
+  // alunos
+  newStudent: () => formDialog('Novo aluno', studentFields, {}, async d => {
+    const s = await api.addStudent(d); S.students.push(s); S.students.sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+    $('#dlg').close(); go({ name: 'student', sid: s.id });
   }),
   openStudent: el => go({ name: 'student', sid: el.dataset.id }),
-  editStudent: () => { const { s } = cur(); formDialog('Editar aluno', studentFields, s, d => { Object.assign(s, d); save(); render(); }); },
-  delStudent: () => { const { s } = cur(); if (confirm(`Excluir ${s.name} e todos os treinos dele?`)) { db.students = db.students.filter(x => x !== s); save(); go({ name: 'students' }); } },
-  newPlan: () => {
+  editStudent: () => { const { s } = cur(); formDialog('Editar aluno', studentFields, s, async d => { await api.updateStudent(s.id, d); Object.assign(s, d); render(); }); },
+  delStudent: async () => {
     const { s } = cur();
-    const p = { id: uid(), name: 'Treino ' + String.fromCharCode(65 + s.plans.length), focus: '', items: [] };
-    s.plans.push(p); save(); go({ name: 'plan', sid: s.id, pid: p.id });
+    if (!confirm(`Excluir ${s.name}, os treinos e todo o histórico? Não dá para desfazer.`)) return;
+    await api.deleteStudent(s.id);
+    S.students = S.students.filter(x => x !== s); S.plans = S.plans.filter(p => p.student_id !== s.id); S.logs = S.logs.filter(l => l.student_id !== s.id);
+    go({ name: 'students' });
   },
-  openPlan: el => go({ name: 'plan', sid: view.sid, pid: el.dataset.id }),
-  dupPlan: () => { const { s, p } = cur(); const c = JSON.parse(JSON.stringify(p)); c.id = uid(); c.name += ' (cópia)'; s.plans.push(c); save(); go({ name: 'plan', sid: s.id, pid: c.id }); toast('Treino duplicado'); },
-  delPlan: () => { const { s, p } = cur(); if (confirm(`Excluir ${p.name}?`)) { s.plans = s.plans.filter(x => x !== p); save(); go({ name: 'student', sid: s.id }); } },
+  copyInvite: async () => { const { s } = cur(); try { await navigator.clipboard.writeText(inviteMsg(s)); toast('Mensagem copiada!'); } catch { prompt('Copie a mensagem:', inviteMsg(s)); } },
+  resetInvite: async () => {
+    const { s } = cur();
+    if (!confirm(`Gerar um novo convite? ${s.name} perde o acesso até criar/entrar de novo pelo novo link.`)) return;
+    s.invite_code = await api.resetInvite(s.id); s.user_id = null; render(); toast('Novo convite gerado');
+  },
+  // treinos
+  newPlan: async () => {
+    const { s } = cur(), ps = plansOf(s.id);
+    const p = await api.addPlan({ student_id: s.id, name: 'Treino ' + String.fromCharCode(65 + ps.length), focus: '', position: ps.length, items: [] });
+    S.plans.push(p); go({ name: 'plan', sid: s.id, pid: p.id });
+  },
+  openPlan: el => go({ name: 'plan', sid: S.view.sid, pid: el.dataset.id }),
+  dupPlan: async () => {
+    flushPlanSave();
+    const { s, p } = cur();
+    const c = await api.addPlan({ student_id: s.id, name: p.name + ' (cópia)', focus: p.focus, position: plansOf(s.id).length, items: p.items });
+    S.plans.push(c); go({ name: 'plan', sid: s.id, pid: c.id }); toast('Treino duplicado');
+  },
+  delPlan: async () => {
+    const { s, p } = cur(); if (!confirm(`Excluir ${p.name}?`)) return;
+    clearTimeout(planSaveT); planSaveT = null;
+    await api.deletePlan(p.id); S.plans = S.plans.filter(x => x !== p); go({ name: 'student', sid: s.id });
+  },
   addItem: () => pickerDialog(cur().p),
-  pick: el => {
-    const dlg = $('#dlg'); dlg._plan.items.push({ exId: el.dataset.id, sets: '3', reps: '12', load: '', rest: '60', obs: '' });
-    save(); dlg._draw(); toast('Adicionado: ' + exById(el.dataset.id).name);
-  },
-  pickNew: () => { const plan = $('#dlg')._plan; $('#dlg').close(); exerciseDialog(null, ex => { plan.items.push({ exId: ex.id, sets: '3', reps: '12', load: '', rest: '60', obs: '' }); save(); render(); }); },
-  closeDlg: () => { $('#dlg').close(); if (mode === 'trainer') render(); },
-  moveItem: el => { const { p } = cur(); const i = +el.dataset.i, j = i + +el.dataset.d; if (j < 0 || j >= p.items.length) return; [p.items[i], p.items[j]] = [p.items[j], p.items[i]]; save(); render(); },
-  delItem: el => { const { p } = cur(); p.items.splice(+el.dataset.i, 1); save(); render(); },
+  pick: el => { const dlg = $('#dlg'); dlg._plan.items.push(newItem(el.dataset.id)); queuePlanSave(dlg._plan); dlg._draw(); toast('Adicionado: ' + exById(el.dataset.id).name); },
+  pickNew: () => { const plan = $('#dlg')._plan; $('#dlg').close(); exerciseDialog(null, ex => { plan.items.push(newItem(ex.id)); render(); queuePlanSave(plan); }); },
+  closeDlg: () => { $('#dlg').close(); if (S.role === 'trainer' && S.view.name === 'plan') { render(); const el = $('#saving'); if (el && planSaveT) el.textContent = 'Salvando…'; } },
+  moveItem: el => { const { p } = cur(); const i = +el.dataset.i, j = i + +el.dataset.d; if (j < 0 || j >= p.items.length) return; [p.items[i], p.items[j]] = [p.items[j], p.items[i]]; render(); queuePlanSave(p); },
+  delItem: el => { const { p } = cur(); p.items.splice(+el.dataset.i, 1); render(); queuePlanSave(p); },
+  // acompanhamento
+  seenAll: async () => { await markSeen(S.logs); render(); toast('Tudo marcado como visto'); },
+  // exercícios
   newEx: () => exerciseDialog(null),
   editEx: el => exerciseDialog(exById(el.dataset.id)),
-  delEx: el => {
-    const id = el.dataset.id, used = db.students.some(s => s.plans.some(p => p.items.some(i => i.exId === id)));
-    if (!confirm(used ? 'Este exercício está em treinos de alunos e será removido deles. Excluir mesmo assim?' : 'Excluir exercício?')) return;
-    db.exercises = db.exercises.filter(e => e.id !== id);
-    db.students.forEach(s => s.plans.forEach(p => p.items = p.items.filter(i => i.exId !== id)));
-    save(); $('#dlg').close(); render();
+  seedEx: async () => { for (const [name, grp] of BASIC) S.exercises.push(await api.addExercise({ name, grp })); render(); toast('Exercícios adicionados — agora coloque seus vídeos'); },
+  delEx: async el => {
+    const id = el.dataset.id, using = S.plans.filter(p => (p.items || []).some(i => i.ex === id));
+    if (!confirm(using.length ? `Este exercício está em ${using.length} treino(s) e será removido deles. Excluir mesmo assim?` : 'Excluir exercício?')) return;
+    for (const p of using) { p.items = p.items.filter(i => i.ex !== id); await api.updatePlan(p.id, { items: p.items }); }
+    await api.deleteExercise(id);
+    S.exercises = S.exercises.filter(e => e.id !== id);
+    $('#dlg').close(); render();
   },
   exGroup: el => { exFilter.g = el.dataset.g; render(); },
-  share: () => shareDialog(cur().s),
-  copyLink: async () => { try { await navigator.clipboard.writeText($('#dlg')._msg); toast('Mensagem com link copiada!'); } catch { prompt('Copie o link:', $('#dlg')._link); } },
-  nativeShare: () => navigator.share({ title: 'Seu treino', text: $('#dlg')._msg }).catch(() => {}),
-  preview: () => { aluno = payloadFor(cur().s); alunoPreview = true; alunoPlan = 0; progress._mem = null; mode = 'aluno'; render(); window.scrollTo(0, 0); },
-  exitPreview: () => { mode = 'trainer'; alunoPreview = false; aluno = null; render(); },
-  trainerMode: () => { if (confirm('A área do personal é para montar treinos. Abrir mesmo assim?')) { mode = 'trainer'; render(); } },
-  alunoPlan: el => { alunoPlan = +el.dataset.k; render(); window.scrollTo(0, 0); },
-  showVideo: el => { const i = +el.dataset.i, box = $('#v' + i); box.classList.remove('pending'); box.innerHTML = videoEmbed(aluno.p[alunoPlan].i[i].v); },
+  import: () => $('#importFile').click(),
+  // aluno
+  curPlan: el => { curPlan = +el.dataset.k; render(); window.scrollTo(0, 0); },
+  showVideo: el => { const i = +el.dataset.i, box = $('#v' + i); box.classList.remove('pending'); box.innerHTML = videoEmbed(exById(S.plans[curPlan].items[i].ex).video); },
   toggleSet: el => {
-    const i = +el.dataset.i, k = +el.dataset.k, it = aluno.p[alunoPlan].i[i];
-    const pr = alunoPreview ? (progress._mem && progress._mem.plan === alunoPlan ? progress._mem : { date: today(), done: {}, plan: alunoPlan }) : progress();
+    const P = S.plans[curPlan], i = +el.dataset.i, k = +el.dataset.k, it = P.items[i];
+    const pr = progress(P.id);
+    pr.start ||= Date.now();
     const arr = pr.done[i] ||= [];
     arr[k] = !arr[k];
-    saveProgress(pr);
+    store.set(progKey(P.id), pr);
     el.classList.toggle('done', arr[k]);
-    const n = Math.min(Math.max(parseInt(it.s) || 3, 1), 12);
-    $('#it' + i).classList.toggle('complete', arr.slice(0, n).filter(Boolean).length >= n);
-    updateProgress(pr);
-    const rest = parseInt(it.rt) || 0;
+    $('#it' + i).classList.toggle('complete', arr.slice(0, nSets(it)).filter(Boolean).length >= nSets(it));
+    updateProgress(P, pr);
+    const rest = parseInt(it.rest) || 0;
     if (arr[k] && rest > 0) startTimer(rest);
   },
-  finish: () => {
-    const P = aluno.p[alunoPlan];
-    if (!alunoPreview) {
-      const h = workoutHist(); h.push({ date: today(), plan: P.n }); store.set(alunoKey() + '_hist', h);
-      store.del(alunoKey() + '_prog_' + alunoPlan);
-    } else progress._mem = null;
-    render(); window.scrollTo(0, 0);
-    toast(`${P.n} concluído! Mandou bem 🎉`);
-  },
+  finish: () => finishDialog(),
   tAdd: () => { timerEnd += 15000; },
-  tSkip: () => { clearInterval(timerInt); $('#timer').hidden = true; },
-  export: () => {
-    const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup-treinos-${today()}.json`; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  },
-  import: () => $('#importFile').click()
+  tSkip: () => { clearInterval(timerInt); $('#timer').hidden = true; }
 };
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!el || !actions[el.dataset.act]) return;
   e.preventDefault();
-  actions[el.dataset.act](el);
+  const r = actions[el.dataset.act](el);
+  if (r && r.then) {
+    el.disabled = true;
+    r.catch(err => toast('Erro: ' + ptError(err))).finally(() => { el.disabled = false; });
+  }
 });
+let trainerNameT;
 document.addEventListener('input', e => {
   const t = e.target;
   if (t.id === 'exq') {
     exFilter.q = t.value; const pos = t.selectionStart; render();
     const n = $('#exq'); n.focus(); n.setSelectionRange(pos, pos); return;
   }
-  if (t.dataset.sf) { db[t.dataset.sf] = t.value; save(); return; }
+  if (t.dataset.load !== undefined && S.role === 'student') {
+    const P = S.plans[curPlan], pr = progress(P.id); pr.loads[+t.dataset.load] = t.value; store.set(progKey(P.id), pr); return;
+  }
+  if (t.dataset.sf === 'name') {
+    S.trainer.name = t.value; clearTimeout(trainerNameT);
+    trainerNameT = setTimeout(() => api.updateTrainer(S.trainer.id, S.trainer.name).catch(er => toast('Erro: ' + ptError(er))), 700); return;
+  }
   const { s, p } = cur();
-  if (t.dataset.pf && p) { p[t.dataset.pf] = t.value; save(); if (t.dataset.pf === 'name') $('#top h1').textContent = s.name + ' · ' + t.value; return; }
-  if (t.dataset.f && p) { p.items[+t.dataset.i][t.dataset.f] = t.value; save(); }
+  if (t.dataset.pf && p) { p[t.dataset.pf] = t.value; queuePlanSave(p); if (t.dataset.pf === 'name') $('#top h1').textContent = s.name + ' · ' + t.value; return; }
+  if (t.dataset.f && p) { p.items[+t.dataset.i][t.dataset.f] = t.value; queuePlanSave(p); }
 });
 document.addEventListener('change', async e => {
   if (e.target.id !== 'importFile' || !e.target.files[0]) return;
+  let d;
+  try { d = JSON.parse(await e.target.files[0].text()); if (!Array.isArray(d.exercises) || !Array.isArray(d.students)) throw 0; }
+  catch { return alert('Arquivo de backup inválido.'); }
+  if (!confirm(`Importar ${d.exercises.length} exercícios e ${d.students.length} alunos?`)) return;
   try {
-    const d = JSON.parse(await e.target.files[0].text());
-    if (!Array.isArray(d.exercises) || !Array.isArray(d.students)) throw 0;
-    if (!confirm('Substituir os dados atuais por este backup?')) return;
-    db = d; save(); render(); toast('Backup restaurado');
-  } catch { alert('Arquivo de backup inválido.'); }
+    toast('Importando…');
+    const map = {};
+    for (const x of d.exercises) {
+      const found = S.exercises.find(y => y.name.toLowerCase() === (x.name || '').toLowerCase());
+      const row = found || await api.addExercise({ name: x.name, grp: x.group || 'Outros', video: x.video || '', notes: x.notes || '' });
+      if (found && !found.video && x.video) { await api.updateExercise(found.id, { video: x.video }); found.video = x.video; }
+      if (!found) S.exercises.push(row);
+      map[x.id] = row.id;
+    }
+    for (const st of d.students) {
+      const s = await api.addStudent({ name: st.name, goal: st.goal || '', notes: st.notes || '' });
+      S.students.push(s);
+      for (const [i, p] of (st.plans || []).entries()) {
+        S.plans.push(await api.addPlan({ student_id: s.id, name: p.name, focus: p.focus || '', position: i,
+          items: (p.items || []).filter(it => map[it.exId]).map(it => ({ ex: map[it.exId], sets: it.sets, reps: it.reps, load: it.load, rest: it.rest, obs: it.obs })) }));
+      }
+    }
+    render(); toast('Importação concluída ✓');
+  } catch (er) { alert('Erro na importação: ' + ptError(er)); render(); }
 });
 
-/* ===================== início ===================== */
-(async function init() {
-  const m = location.hash.match(/^#a=([zj][\w-]+)/);
-  if (m) {
-    try {
-      aluno = await decode(m[1]);
-      store.set('mp_aluno', aluno);
-      history.replaceState(null, '', location.pathname + location.search);
-      mode = 'aluno';
-    } catch { alert('Link de treino inválido ou incompleto.'); }
-  } else {
-    const saved = store.get('mp_aluno', null);
-    if (saved && !store.get('mp_db', null)) { aluno = saved; mode = 'aluno'; }
-  }
-  render();
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-})();
+boot();
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>

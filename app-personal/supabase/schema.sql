@@ -1,0 +1,206 @@
+-- =====================================================================
+-- Meu Personal — banco de dados (Supabase)
+-- Cole este arquivo inteiro em: Supabase → SQL Editor → New query → Run
+-- Depois, rode a linha do final trocando pelo SEU e-mail de personal.
+-- =====================================================================
+
+-- ---------- Tabelas ----------
+
+-- E-mails autorizados a criar conta de PERSONAL (alunos não precisam estar aqui).
+create table if not exists public.trainer_allowlist (
+  email text primary key
+);
+
+create table if not exists public.trainers (
+  id         uuid primary key default auth.uid() references auth.users on delete cascade,
+  name       text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.exercises (
+  id         uuid primary key default gen_random_uuid(),
+  trainer_id uuid not null default auth.uid() references public.trainers on delete cascade,
+  name       text not null,
+  grp        text not null default 'Outros',
+  video      text not null default '',
+  notes      text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.students (
+  id          uuid primary key default gen_random_uuid(),
+  trainer_id  uuid not null default auth.uid() references public.trainers on delete cascade,
+  user_id     uuid unique references auth.users on delete set null,
+  name        text not null,
+  goal        text not null default '',
+  notes       text not null default '',            -- só o personal vê
+  invite_code text not null unique default upper(substr(md5(gen_random_uuid()::text), 1, 8)),
+  created_at  timestamptz not null default now()
+);
+
+create table if not exists public.plans (
+  id         uuid primary key default gen_random_uuid(),
+  student_id uuid not null references public.students on delete cascade,
+  trainer_id uuid not null default auth.uid() references public.trainers on delete cascade,
+  name       text not null,
+  focus      text not null default '',
+  position   int  not null default 0,
+  -- [{ "ex": "<exercise id>", "sets": "3", "reps": "12", "load": "20 kg", "rest": "60", "obs": "" }]
+  items      jsonb not null default '[]',
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.workout_logs (
+  id           uuid primary key default gen_random_uuid(),
+  student_id   uuid not null references public.students on delete cascade,
+  plan_id      uuid references public.plans on delete set null,
+  plan_name    text not null,
+  done_at      timestamptz not null default now(),
+  duration_min int,
+  effort       int check (effort between 1 and 10),
+  comment      text not null default '',
+  -- [{ "name": "Agachamento", "done": 3, "total": 3, "load": "40 kg" }]
+  details      jsonb not null default '[]',
+  trainer_seen boolean not null default false
+);
+
+create index if not exists exercises_trainer_idx on public.exercises (trainer_id);
+create index if not exists students_trainer_idx  on public.students (trainer_id);
+create index if not exists plans_student_idx     on public.plans (student_id);
+create index if not exists logs_student_idx      on public.workout_logs (student_id, done_at desc);
+
+-- ---------- Funções auxiliares ----------
+
+create or replace function public.is_allowed_trainer() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from trainer_allowlist
+                 where lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
+$$;
+
+create or replace function public.my_student_id() returns uuid
+language sql stable security definer set search_path = public as $$
+  select id from students where user_id = auth.uid();
+$$;
+
+create or replace function public.my_trainer_as_student() returns uuid
+language sql stable security definer set search_path = public as $$
+  select trainer_id from students where user_id = auth.uid();
+$$;
+
+-- Dados do aluno logado (sem as observações privadas do personal).
+create or replace function public.my_student()
+returns table (id uuid, name text, goal text, trainer_name text)
+language sql stable security definer set search_path = public as $$
+  select s.id, s.name, s.goal, t.name
+  from students s join trainers t on t.id = s.trainer_id
+  where s.user_id = auth.uid();
+$$;
+
+-- O aluno usa o código de convite para ligar a conta dele ao cadastro feito pelo personal.
+create or replace function public.claim_invite(code text) returns text
+language plpgsql security definer set search_path = public as $$
+declare v_name text;
+begin
+  if auth.uid() is null then raise exception 'Faça login primeiro'; end if;
+  if exists (select 1 from trainers where id = auth.uid()) then
+    raise exception 'Esta conta é de personal; use outro e-mail para a conta de aluno';
+  end if;
+  if exists (select 1 from students where user_id = auth.uid()) then
+    raise exception 'Esta conta já está ligada a um aluno';
+  end if;
+  update students set user_id = auth.uid()
+   where invite_code = upper(trim(code)) and user_id is null
+  returning name into v_name;
+  if v_name is null then raise exception 'Código de convite inválido ou já usado'; end if;
+  return v_name;
+end $$;
+
+-- O personal desliga o acesso atual do aluno e gera um código novo.
+create or replace function public.reset_invite(p_student uuid) returns text
+language plpgsql security definer set search_path = public as $$
+declare v_code text;
+begin
+  update students
+     set user_id = null, invite_code = upper(substr(md5(gen_random_uuid()::text), 1, 8))
+   where id = p_student and trainer_id = auth.uid()
+  returning invite_code into v_code;
+  if v_code is null then raise exception 'Aluno não encontrado'; end if;
+  return v_code;
+end $$;
+
+revoke all on function public.is_allowed_trainer(), public.my_student_id(), public.my_trainer_as_student(),
+  public.my_student(), public.claim_invite(text), public.reset_invite(uuid) from public, anon;
+grant execute on function public.is_allowed_trainer(), public.my_student_id(), public.my_trainer_as_student(),
+  public.my_student(), public.claim_invite(text), public.reset_invite(uuid) to authenticated;
+
+-- ---------- Segurança (Row Level Security) ----------
+
+alter table public.trainer_allowlist enable row level security;   -- sem políticas: ninguém lê pela API
+alter table public.trainers     enable row level security;
+alter table public.exercises    enable row level security;
+alter table public.students     enable row level security;
+alter table public.plans        enable row level security;
+alter table public.workout_logs enable row level security;
+
+-- Visitantes sem login não acessam nada.
+revoke all on public.trainer_allowlist, public.trainers, public.exercises,
+              public.students, public.plans, public.workout_logs from anon;
+
+-- Personal
+drop policy if exists trainers_select on public.trainers;
+create policy trainers_select on public.trainers for select to authenticated
+  using (id = auth.uid() or id = public.my_trainer_as_student());
+drop policy if exists trainers_insert on public.trainers;
+create policy trainers_insert on public.trainers for insert to authenticated
+  with check (id = auth.uid() and public.is_allowed_trainer()
+              and not exists (select 1 from public.students where user_id = auth.uid()));
+drop policy if exists trainers_update on public.trainers;
+create policy trainers_update on public.trainers for update to authenticated
+  using (id = auth.uid()) with check (id = auth.uid());
+
+-- Exercícios: o personal gerencia; os alunos dele podem ler (para ver nome e vídeo).
+drop policy if exists exercises_trainer on public.exercises;
+create policy exercises_trainer on public.exercises for all to authenticated
+  using (trainer_id = auth.uid()) with check (trainer_id = auth.uid());
+drop policy if exists exercises_student on public.exercises;
+create policy exercises_student on public.exercises for select to authenticated
+  using (trainer_id = public.my_trainer_as_student());
+
+-- Alunos: só o personal acessa a tabela (o aluno usa a função my_student()).
+drop policy if exists students_trainer on public.students;
+create policy students_trainer on public.students for all to authenticated
+  using (trainer_id = auth.uid()) with check (trainer_id = auth.uid());
+-- O personal não pode mudar user_id/invite_code diretamente (só via reset_invite).
+revoke insert, update on public.students from authenticated;
+grant insert (name, goal, notes) on public.students to authenticated;
+grant update (name, goal, notes) on public.students to authenticated;
+
+-- Treinos: o personal gerencia os dos seus alunos; o aluno só lê os dele.
+drop policy if exists plans_trainer on public.plans;
+create policy plans_trainer on public.plans for all to authenticated
+  using (trainer_id = auth.uid())
+  with check (trainer_id = auth.uid()
+              and student_id in (select id from public.students where trainer_id = auth.uid()));
+drop policy if exists plans_student on public.plans;
+create policy plans_student on public.plans for select to authenticated
+  using (student_id = public.my_student_id());
+
+-- Registros de treino: o aluno cria e lê os dele; o personal lê os dos alunos e marca como visto.
+drop policy if exists logs_student_select on public.workout_logs;
+create policy logs_student_select on public.workout_logs for select to authenticated
+  using (student_id = public.my_student_id());
+drop policy if exists logs_student_insert on public.workout_logs;
+create policy logs_student_insert on public.workout_logs for insert to authenticated
+  with check (student_id = public.my_student_id() and trainer_seen = false);
+drop policy if exists logs_trainer_select on public.workout_logs;
+create policy logs_trainer_select on public.workout_logs for select to authenticated
+  using (student_id in (select id from public.students where trainer_id = auth.uid()));
+drop policy if exists logs_trainer_update on public.workout_logs;
+create policy logs_trainer_update on public.workout_logs for update to authenticated
+  using (student_id in (select id from public.students where trainer_id = auth.uid()));
+revoke update on public.workout_logs from authenticated;
+grant update (trainer_seen) on public.workout_logs to authenticated;
+
+-- ---------- SEU E-MAIL DE PERSONAL ----------
+-- Troque pelo e-mail que você vai usar para entrar como personal e rode esta linha:
+-- insert into public.trainer_allowlist (email) values ('seu-email@exemplo.com');

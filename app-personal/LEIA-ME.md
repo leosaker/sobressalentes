@@ -1,45 +1,70 @@
-# Meu Personal — app de treinos para alunos
+# Meu Personal — app de treinos com login e acompanhamento
 
-App de celular (PWA) para o personal montar as séries dos alunos com os **próprios vídeos**
-e enviar o treino por link (WhatsApp). O aluno abre o link no celular, assiste ao vídeo de cada
-exercício, marca as séries e usa o cronômetro de descanso. Não precisa de App Store nem de servidor.
+App de celular (PWA, instalável na tela inicial) para o personal montar as séries dos alunos com os
+**próprios vídeos** e acompanhar a evolução de cada um. Usa o **Supabase** (plano grátis) para login e banco de dados.
 
-## Funcionalidades
+## O que o app faz
 **Personal**
-- Cadastro de alunos (objetivo e observações)
-- Treinos A, B, C… com séries, repetições, carga, descanso e observação por exercício
-- Biblioteca de exercícios com link do seu vídeo (YouTube não listado, Google Drive, Vimeo ou .mp4)
-- Enviar treino por WhatsApp, copiar link ou compartilhar
-- "Ver como o aluno" (pré-visualização)
-- Backup/restauração em arquivo .json
+- Login com e-mail e senha (só e-mails autorizados viram personal)
+- Alunos com objetivo e observações privadas (🔒 só você vê)
+- Treinos A, B, C… com séries, repetições, carga, descanso e observação, salvos automaticamente
+- Biblioteca de exercícios com o link do seu vídeo (YouTube não listado, Google Drive, Vimeo ou .mp4)
+- Convite por WhatsApp: o aluno cria a conta pelo link e o treino aparece na hora
+- **Acompanhamento**: aviso de treino novo, alunos sem treinar há 7+ dias, convites pendentes,
+  treinos em 7 e 30 dias, esforço médio, gráfico semanal, comentários e cargas usadas em cada exercício
+- Mudou o treino? O aluno vê na hora, sem precisar reenviar link
 
 **Aluno**
-- Vídeo de execução embutido em cada exercício
-- Marca cada série e o cronômetro de descanso começa sozinho (com som e vibração)
-- Barra de progresso do dia, histórico de treinos concluídos
-- Funciona offline depois de aberto e pode ser adicionado à tela inicial
+- Login próprio, vídeo de execução em cada exercício
+- Marca as séries, o cronômetro de descanso começa sozinho (som + vibração)
+- Anota a carga usada (o app lembra a do último treino)
+- Ao finalizar: nota de esforço (1–10) e comentário para o personal
+- Histórico e treinos do mês. Funciona offline: o registro é enviado quando a internet volta
 
-## Como publicar (grátis)
-O link só funciona para o aluno quando o app está publicado na internet. Escolha uma opção:
+## Como colocar no ar (uns 15 minutos, tudo grátis)
 
-- **Netlify Drop**: acesse https://app.netlify.com/drop e arraste a pasta `app-personal`. Você recebe um endereço `https://...netlify.app`.
-- **GitHub Pages**: num repositório próprio, coloque estes arquivos e ative *Settings → Pages*.
+### 1. Criar o banco no Supabase
+1. Crie uma conta em https://supabase.com e um **New project** (região: São Paulo).
+2. Vá em **SQL Editor → New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**.
+3. Ainda no SQL Editor, autorize o SEU e-mail de personal:
+   ```sql
+   insert into public.trainer_allowlist (email) values ('seu-email@exemplo.com');
+   ```
 
-Abra o endereço no seu celular, use a área do personal e toque em "Enviar treino para o aluno".
+### 2. Ligar o app ao Supabase
+1. No Supabase, abra **Project Settings → API** (ou o botão **Connect**).
+2. Copie a **Project URL** e a chave **anon / publishable** para o arquivo `config.js`.
+   (Essa chave pode ficar pública: quem protege os dados são as regras do `schema.sql`.)
 
-## Como colocar seus vídeos
-1. Grave o exercício.
-2. Envie para o YouTube como **Não listado** (ou para o Google Drive com "qualquer pessoa com o link").
-3. Cole o link no exercício, na aba 🎬 Exercícios.
+### 3. Publicar o app
+- **Netlify Drop**: acesse https://app.netlify.com/drop e arraste a pasta `app-personal`.
+  Você recebe um endereço `https://...netlify.app`.
+- Ou **GitHub Pages**, num repositório só do app.
 
-## Limitações desta versão
-- Os dados do personal ficam salvos no aparelho. Use o backup para trocar de aparelho.
-- O treino vai dentro do link. Se você alterar o treino, envie o link de novo.
-- Não há login nem pagamento, e o aluno não envia as cargas de volta ao personal.
-  Para isso, a próxima etapa é ligar o app a um banco de dados (ex.: Supabase/Firebase).
+### 4. Ajustar os links de e-mail
+No Supabase, em **Authentication → URL Configuration**, coloque o endereço do seu app em **Site URL**
+e também em **Redirect URLs**. Assim os links de confirmação de e-mail e de "esqueci minha senha" voltam para o app.
+
+> Dica: em **Authentication → Providers → Email** dá para desligar "Confirm email". Assim o aluno entra
+> direto sem precisar confirmar o e-mail. É mais prático, mas menos seguro.
+
+### 5. Usar
+1. Abra o endereço no celular, toque em **Criar conta** com o e-mail autorizado e depois em **Criar meu perfil de personal**.
+2. Em 🎬 Exercícios, adicione os exercícios básicos e cole os links dos seus vídeos.
+3. Cadastre um aluno, monte o treino e toque em **WhatsApp** no cartão de convite.
+4. Na aba 📈 Acompanhar você vê cada treino que os alunos finalizam.
+
+Para instalar como app: no iPhone, Safari → Compartilhar → **Adicionar à Tela de Início**.
+No Android, Chrome → ⋮ → **Instalar app**.
+
+## Segurança
+- Cada personal só vê os próprios alunos, exercícios e registros.
+- O aluno só vê o próprio treino e não vê as observações privadas.
+- Cada código de convite vale para uma conta só. "Gerar novo convite" desliga o acesso atual do aluno.
+- Só e-mails da tabela `trainer_allowlist` podem virar personal.
 
 ## Testar no computador
 ```
 cd app-personal && python3 -m http.server 8000
 ```
-Depois abra http://localhost:8000
+Abra http://localhost:8000. É preciso preencher o `config.js` antes.
