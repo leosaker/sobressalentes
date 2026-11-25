@@ -14,7 +14,7 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
   treinos em 7 e 30 dias, esforço médio, gráfico semanal, comentários e cargas usadas em cada exercício
 - Mudou o treino? O aluno vê na hora, sem precisar reenviar link
 - **Notificações no celular**: aviso quando um aluno finaliza o treino (toque e abre direto nele) e botão
-  "📣 Avisar o aluno" no editor de treino (opcional — veja o passo 6)
+  "📣 Avisar o aluno" no editor de treino (opcional — veja o passo 5)
 - **Avaliação física**: peso, altura, % de gordura e 10 circunferências, com IMC, massa magra e massa gorda
   calculados na hora, gráfico de evolução de cada medida e comparação com a avaliação anterior
 - **Fotos de evolução** (frente, lado e costas), comprimidas no celular e guardadas em pasta privada:
@@ -76,7 +76,7 @@ e também em **Redirect URLs**. Assim os links de confirmação de e-mail e de "
 > Dica: em **Authentication → Providers → Email** dá para desligar "Confirm email". Assim o aluno entra
 > direto sem precisar confirmar o e-mail. É mais prático, mas menos seguro.
 
-### 6. Notificações no celular (opcional)
+### 5. Notificações no celular (opcional)
 O app funciona sem isso. Para ativar os avisos e lembretes:
 
 1. **Banco:** se ainda não rodou, rode `supabase/migracao-v5.sql` no SQL Editor.
@@ -96,7 +96,7 @@ O app funciona sem isso. Para ativar os avisos e lembretes:
    - **iPhone:** precisa do iOS 16.4 ou mais novo, e o app tem que estar na Tela de Início
      (Safari → Compartilhar → Adicionar à Tela de Início). Abra pelo ícone e ative.
 
-### 7. Usar
+### 6. Usar
 1. Abra o endereço no celular, toque em **Criar conta** com o e-mail autorizado e depois em **Criar meu perfil de personal**.
 2. Em 🎬 Exercícios, adicione os exercícios básicos e cole os links dos seus vídeos.
 3. Cadastre um aluno, monte o treino e toque em **WhatsApp** no cartão de convite.
