@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meu Personal</title>
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#0f2742">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Treinos">
 <link rel="manifest" href="manifest.json">
@@ -27,7 +27,7 @@
 html,body{margin:0}
 body{background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   padding-bottom:calc(72px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
-header{position:sticky;top:0;z-index:5;background:var(--primary);color:var(--primary-ink);padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+header{position:sticky;top:0;z-index:5;background:var(--header,var(--primary));color:var(--header-ink,var(--primary-ink));padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
   display:flex;align-items:center;gap:10px;min-height:56px}
 header h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header .hlogo{width:30px;height:30px;border-radius:8px;object-fit:cover;flex:none}
@@ -126,7 +126,7 @@ dialog::backdrop{background:rgba(2,6,23,.55)}
 #timer button{background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:12px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer}
 #toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100vw - 32px)}
 #toast.show{opacity:1}
-.hello{background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 70%,var(--accent)));color:var(--primary-ink);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.hello{background:linear-gradient(135deg,var(--header,var(--primary)),color-mix(in srgb,var(--header,var(--primary)) 84%,#fff));color:var(--header-ink,var(--primary-ink));border-radius:var(--radius);padding:18px 18px 18px 22px;margin-bottom:14px;box-shadow:inset 5px 0 0 var(--accent)}
 .hello h2{color:inherit}
 .hello small{color:inherit;opacity:.88}
 .auth{max-width:420px;margin:24px auto 0}
@@ -254,15 +254,20 @@ const inkFor = c => contrast(c, [255, 255, 255]) >= contrast(c, [15, 23, 42]) ? 
 function readableOn(c, bg, min = 4.5) { const to = lum(bg) > .4 ? [0, 0, 0] : [255, 255, 255]; let t = 0, v = c; while (contrast(v, bg) < min && t < 1) { t += .05; v = mix(c, to, t); } return v; }
 // No modo escuro a cor da marca é clareada até se destacar do fundo escuro.
 const darkVariant = c => readableOn(c, [18, 26, 43], 3);
+const DARK_BG = [18, 26, 43];
 function applyBrand() {
   document.title = APP_NAME;
   const p = hexRgb(MARCA.corPrincipal), a = hexRgb(MARCA.corDestaque) || p;
   if (!p) return;
-  const pd = darkVariant(p), ad = darkVariant(a);
+  // Marca escura (ex.: azul-marinho): no modo escuro o topo continua na cor da marca
+  // e botões/links usam a cor de destaque, que aparece melhor no fundo escuro.
+  const darkBrand = contrast(p, DARK_BG) < 3;
+  const pd = darkBrand && contrast(a, DARK_BG) >= 3 ? a : darkVariant(p), ad = darkVariant(a);
+  const hd = darkBrand ? p : pd;
   // contra o fundo mais exigente de cada tema (cinza claro / cartão escuro)
   const linkL = readableOn(p, [238, 242, 245]), linkD = readableOn(pd, [26, 36, 56]);
-  const css = `:root{--primary:${rgbHex(p)};--primary-ink:${inkFor(p)};--accent:${rgbHex(a)};--link:${rgbHex(linkL)}}
-    @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--primary:${rgbHex(pd)};--primary-ink:${inkFor(pd)};--accent:${rgbHex(ad)};--link:${rgbHex(linkD)}}}`;
+  const css = `:root{--primary:${rgbHex(p)};--primary-ink:${inkFor(p)};--accent:${rgbHex(a)};--link:${rgbHex(linkL)};--header:${rgbHex(p)};--header-ink:${inkFor(p)}}
+    @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--primary:${rgbHex(pd)};--primary-ink:${inkFor(pd)};--accent:${rgbHex(ad)};--link:${rgbHex(linkD)};--header:${rgbHex(hd)};--header-ink:${inkFor(hd)}}}`;
   const st = document.createElement('style'); st.id = 'brandStyle'; st.textContent = css; document.head.appendChild(st);
   const mt = document.querySelector('meta[name=theme-color]'); if (mt) mt.content = rgbHex(p);
 }
@@ -270,7 +275,10 @@ applyBrand();
 // Na tela de entrada mostra o logo inteiro; no topo usa o ícone quadrado.
 function brandLogo(cls) {
   const src = cls === 'logo' && MARCA.logo ? MARCA.logo : 'icon-192.png';
-  return `<img class="${cls}${src === MARCA.logo ? ' wide' : ''}" src="${esc(src)}" alt="${esc(APP_NAME)}">`;
+  const img = `<img class="${cls}${src === MARCA.logo ? ' wide' : ''}" src="${esc(src)}" alt="${esc(APP_NAME)}">`;
+  // Com logo próprio para fundo escuro, o navegador troca sozinho no modo escuro.
+  return src === MARCA.logo && MARCA.logoEscuro
+    ? `<picture><source srcset="${esc(MARCA.logoEscuro)}" media="(prefers-color-scheme: dark)">${img}</picture>` : img;
 }
 const waLink = (text = '') => MARCA.whatsapp ? `https://wa.me/${String(MARCA.whatsapp).replace(/\D/g, '')}${text ? '?text=' + encodeURIComponent(text) : ''}` : '';
 const igLink = () => MARCA.instagram ? `https://www.instagram.com/${String(MARCA.instagram).replace(/^@/, '')}/` : '';

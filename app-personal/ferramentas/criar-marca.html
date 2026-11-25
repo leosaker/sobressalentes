@@ -72,6 +72,8 @@ code{font-size:13px;background:var(--surface2);padding:1px 5px;border-radius:5px
         <div class="check" id="contrastMsg"></div>
         <label for="logo">Logo (PNG, JPG ou SVG — opcional)</label><input type="file" id="logo" accept="image/png,image/jpeg,image/svg+xml,image/webp">
         <small>Use o logo com fundo transparente, se tiver. Sem logo, o app usa o monograma.</small>
+        <label for="logoEscuro">Logo para fundo escuro (opcional)</label><input type="file" id="logoEscuro" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+        <small>Versão clara do logo, usada quando o celular está no modo escuro.</small>
         <label for="fundo">Fundo do ícone do app</label>
         <select id="fundo"><option value="marca">Cor principal</option><option value="branco">Branco</option><option value="preto">Preto</option></select>
         <div class="icons">
@@ -116,7 +118,7 @@ code{font-size:13px;background:var(--surface2);padding:1px 5px;border-radius:5px
 <script>
 const $ = id => document.getElementById(id);
 const FIELDS = ['nome', 'nomeCurto', 'monograma', 'slogan', 'corPrincipal', 'corDestaque', 'instagram', 'whatsapp'];
-let logoImg = null, logoBlob = null;
+let logoImg = null, logoBlob = null, darkBlob = null;
 
 // ---------- cores ----------
 const hexRgb = h => { h = h.replace('#', ''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
@@ -173,6 +175,14 @@ $('logo').addEventListener('change', async e => {
   preview();
 });
 
+$('logoEscuro').addEventListener('change', async e => {
+  const f = e.target.files[0]; darkBlob = null; if (!f) return;
+  const i = await new Promise((res, rej) => { const x = new Image(); x.onload = () => res(x); x.onerror = rej; x.src = URL.createObjectURL(f); });
+  const sc = Math.min(1, 512 / Math.max(i.width || 512, i.height || 512));
+  const c = document.createElement('canvas'); c.width = Math.round((i.width || 512) * sc); c.height = Math.round((i.height || 512) * sc);
+  c.getContext('2d').drawImage(i, 0, 0, c.width, c.height); darkBlob = await toBlob(c);
+});
+
 // ---------- ZIP (sem compressão, sem bibliotecas) ----------
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
@@ -209,6 +219,7 @@ self.MARCA = {
   corPrincipal: ${q(m.corPrincipal)},
   corDestaque: ${q(m.corDestaque)},
   logo: ${q(m.logo)},
+  logoEscuro: ${q(m.logoEscuro)},
   monograma: ${q(m.monograma)},
   instagram: ${q(m.instagram)},
   whatsapp: ${q(m.whatsapp)}
@@ -222,7 +233,7 @@ $('baixar').onclick = async () => {
   m.nomeCurto ||= m.nome.slice(0, 12); m.monograma = (m.monograma || initials()).toUpperCase().slice(0, 3);
   m.instagram = m.instagram.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/.*$/, '');
   m.whatsapp = m.whatsapp.replace(/\D/g, ''); if (m.whatsapp && m.whatsapp.length <= 11) m.whatsapp = '55' + m.whatsapp;
-  m.logo = logoBlob ? 'logo.png' : '';
+  m.logo = logoBlob ? 'logo.png' : ''; m.logoEscuro = logoBlob && darkBlob ? 'logo-escuro.png' : '';
   const manifest = { name: m.nome, short_name: m.nomeCurto, start_url: './', scope: './', display: 'standalone', background_color: '#0b1220', theme_color: m.corPrincipal, lang: 'pt-BR',
     icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }] };
   const enc = new TextEncoder(), bytes = async b => new Uint8Array(await b.arrayBuffer());
@@ -235,6 +246,7 @@ $('baixar').onclick = async () => {
     { name: 'badge-96.png', data: await bytes(await toBlob(drawIcon(96, { mono: true, transparent: true }))) }
   ];
   if (logoBlob) files.push({ name: 'logo.png', data: await bytes(logoBlob) });
+  if (logoBlob && darkBlob) files.push({ name: 'logo-escuro.png', data: await bytes(darkBlob) });
   const a = document.createElement('a'); a.href = URL.createObjectURL(makeZip(files));
   a.download = 'marca-' + (m.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'app') + '.zip';
   document.body.appendChild(a); a.click(); a.remove();
@@ -243,6 +255,7 @@ $('baixar').onclick = async () => {
 // ---------- iniciar com a marca atual ----------
 const M = window.MARCA || {};
 FIELDS.forEach(k => { if (M[k]) $(k).value = M[k]; });
+if (M.logoEscuro) fetch('../' + M.logoEscuro).then(r => r.ok ? r.blob() : null).then(b => { darkBlob = b; }).catch(() => {});
 if (M.logo) { const i = new Image(); i.onload = () => { logoImg = i; fetch('../' + M.logo).then(r => r.blob()).then(b => { logoBlob = b; }).catch(() => {}); preview(); }; i.src = '../' + M.logo; }
 document.addEventListener('input', preview); $('fundo').addEventListener('change', preview);
 preview();
