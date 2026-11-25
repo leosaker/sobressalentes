@@ -3,8 +3,8 @@
 self.window = self;
 try { importScripts('marca.js'); } catch (e) { /* sem marca: usa os padrões */ }
 const MARCA = self.MARCA || {};
-const CACHE = 'meu-personal-v6';
-const ASSETS = ['./', './index.html', './marca.js', './config.js', './manifest.json', './icon-192.png', './badge-96.png'].concat([MARCA.logo, MARCA.logoEscuro].filter(Boolean).map(f => './' + f));
+const CACHE = 'meu-personal-v7';
+const ASSETS = ['./', './index.html', './marca.js', './config.js', './manifest.json', './icon-192.png', './badge-96.png', './vendor/qrcode.js'].concat([MARCA.logo, MARCA.logoEscuro].filter(Boolean).map(f => './' + f));
 const CDN = 'https://cdn.jsdelivr.net';
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

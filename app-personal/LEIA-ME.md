@@ -13,6 +13,18 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
 - **Acompanhamento**: aviso de treino novo, alunos sem treinar há 7+ dias, convites pendentes,
   treinos em 7 e 30 dias, esforço médio, gráfico semanal, comentários e cargas usadas em cada exercício
 - Mudou o treino? O aluno vê na hora, sem precisar reenviar link
+- **Ferramentas por aluno**: na ficha de cada aluno, ligue ou desligue o que ele vê (vídeos, cronômetro, cargas,
+  série a série, troca de exercício, periodização, histórico, avaliação, fotos, questionário, notificações,
+  mensalidades e agenda). O que estiver desligado **não aparece** para o aluno. Há um padrão em ⚙️ Ajustes e
+  atalhos "Completo" / "Essencial"
+- **Negócio** (aba 💼):
+  - **Painel**: alunos ativos, frequência média, treinos por semana, receita por mês, valores a receber e em atraso,
+    e uma lista do que precisa de atenção (pagamentos informados, atrasos, aulas sem confirmação, treinos vencendo, alunos parados)
+  - **Financeiro**: mensalidade e dia de vencimento por aluno, "Gerar mensalidades do mês" com um toque, cobranças avulsas,
+    cobrança pelo WhatsApp com Pix copia e cola. O aluno paga pelo app (**QR Code Pix** com o valor) e toca em "Já paguei";
+    você confirma o recebimento. Cadastre sua chave Pix em ⚙️ Ajustes
+  - **Agenda**: aulas presenciais (com repetição semanal); o aluno confirma ou avisa que não vai poder
+- Exercícios e modelos de treino ficam juntos na aba 📚 **Biblioteca**
 - **Notificações no celular**: aviso quando um aluno finaliza o treino (toque e abre direto nele) e botão
   "📣 Avisar o aluno" no editor de treino (opcional — veja o passo 5)
 - **Avaliação física**: peso, altura, % de gordura (digitado ou calculado por **dobras cutâneas — Pollock 3 ou 7 dobras**, equação de Siri) e 10 circunferências, com IMC, massa magra e massa gorda
@@ -86,8 +98,8 @@ basta autorizar o e-mail de cada um na tabela `trainer_allowlist`.
    ```
 
 > **Já tinha rodado o `schema.sql` antes?** Rode também as atualizações que faltam, em ordem:
-> `supabase/migracao-v2.sql` até a `migracao-v6.sql` (ou rode o `schema.sql` inteiro de novo, que não apaga nada).
-> A v4 cria a pasta privada **fotos** no Storage do Supabase; a v6 adiciona periodização e dobras cutâneas.
+> `supabase/migracao-v2.sql` até a `migracao-v7.sql` (ou rode o `schema.sql` inteiro de novo, que não apaga nada).
+> A v4 cria a pasta privada **fotos** no Storage do Supabase; a v6 adiciona periodização e dobras cutâneas; a v7, ferramentas por aluno, financeiro e agenda.
 
 ### 2. Ligar o app ao Supabase
 1. No Supabase, abra **Project Settings → API** (ou o botão **Connect**).
@@ -137,6 +149,7 @@ No Android, Chrome → ⋮ → **Instalar app**.
 
 ## Segurança
 - Cada personal só vê os próprios alunos, exercícios e registros.
+- O aluno não consegue mudar valores nem marcar cobranças como pagas — só avisar "já paguei" e responder às próprias aulas.
 - O aluno só vê o próprio treino e não vê as observações privadas.
 - Cada código de convite vale para uma conta só. "Gerar novo convite" desliga o acesso atual do aluno.
 - Só e-mails da tabela `trainer_allowlist` podem virar personal.
