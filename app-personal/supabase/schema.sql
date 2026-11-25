@@ -327,6 +327,13 @@ create policy notif_prefs_own on public.notif_prefs for all to authenticated
 revoke update on public.notif_prefs from authenticated;
 grant update (user_id, notify_logs, notify_replies, notify_plans, remind_days, remind_time, tz) on public.notif_prefs to authenticated;
 
+-- ---------- Versão 6: periodização e dobras cutâneas ----------
+-- {"start": "2026-11-25", "phases": [{"name": "Adaptação", "weeks": 2, "pct": -10, "reps": "15", "note": "..."}]}
+alter table public.plans       add column if not exists period jsonb;
+alter table public.templates   add column if not exists period jsonb;
+-- {"proto": "jp7", "sex": "F", "age": 32, "values": {"triceps": 18, ...}, "sum": 120, "bf": 24.1}
+alter table public.assessments add column if not exists skinfolds jsonb;
+
 -- ---------- SEU E-MAIL DE PERSONAL ----------
 -- Troque pelo e-mail que você vai usar para entrar como personal e rode esta linha:
 -- insert into public.trainer_allowlist (email) values ('seu-email@exemplo.com');

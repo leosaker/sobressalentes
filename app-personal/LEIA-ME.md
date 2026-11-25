@@ -15,7 +15,7 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
 - Mudou o treino? O aluno vê na hora, sem precisar reenviar link
 - **Notificações no celular**: aviso quando um aluno finaliza o treino (toque e abre direto nele) e botão
   "📣 Avisar o aluno" no editor de treino (opcional — veja o passo 5)
-- **Avaliação física**: peso, altura, % de gordura e 10 circunferências, com IMC, massa magra e massa gorda
+- **Avaliação física**: peso, altura, % de gordura (digitado ou calculado por **dobras cutâneas — Pollock 3 ou 7 dobras**, equação de Siri) e 10 circunferências, com IMC, massa magra e massa gorda
   calculados na hora, gráfico de evolução de cada medida e comparação com a avaliação anterior
 - **Fotos de evolução** (frente, lado e costas), comprimidas no celular e guardadas em pasta privada:
   só você e o aluno veem. Comparação "primeira × última" lado a lado
@@ -28,6 +28,11 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
   Também dá para usar "Salvar como modelo" dentro de um treino, ou escolher um modelo em "+ Novo treino"
 - **Bi-set, tri-set e circuito**: use "🔗 Juntar com o anterior". Os exercícios aparecem agrupados (2A, 2B…)
   e o descanso só começa no fim do grupo
+- **Periodização**: divida o treino em fases (ex.: Adaptação → Hipertrofia → Força → Deload) com % de carga e
+  repetições por fase. Modelos prontos (linear 8 semanas, ondulatória 6 semanas, progressão 4 semanas) ou personalizada.
+  O aluno vê "Semana 3 de 8 · Força" e as cargas já calculadas (40 kg +10% → 44 kg); a validade acompanha o ciclo
+- **Alternativas de exercício**: em cada exercício, cadastre alternativas. Se o aparelho estiver ocupado, o aluno
+  troca no app (só naquele treino) e você vê no registro "Cadeira extensora ↔ no lugar de Leg press"
 - **Técnicas marcadas**: drop-set, rest-pause, pirâmide, até a falha, excêntrica lenta e pico de contração.
   O aluno vê a técnica em destaque com a explicação. Na pirâmide, escreva as reps por série (ex.: 15-12-10-8)
   e cada série mostra as suas repetições
@@ -37,6 +42,7 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
 **Aluno**
 - Login próprio, vídeo de execução em cada exercício
 - Marca as séries, o cronômetro de descanso começa sozinho (som + vibração)
+- Anota reps e carga **de cada série** (ex.: 8×44 · 7×46 · 6×47,5); o app sugere a carga da última vez
 - Exercício por tempo: toca na série e o cronômetro de execução conta o tempo; no cardio, toca em "▶ Iniciar"
 - Anota a carga usada (o app lembra a do último treino)
 - Ao finalizar: nota de esforço (1–10) e comentário para o personal
@@ -80,8 +86,8 @@ basta autorizar o e-mail de cada um na tabela `trainer_allowlist`.
    ```
 
 > **Já tinha rodado o `schema.sql` antes?** Rode também as atualizações que faltam, em ordem:
-> `supabase/migracao-v2.sql`, `migracao-v3.sql` e `migracao-v4.sql` (ou rode o `schema.sql` inteiro de novo, que não apaga nada).
-> A v4 cria a pasta privada **fotos** no Storage do Supabase.
+> `supabase/migracao-v2.sql` até a `migracao-v6.sql` (ou rode o `schema.sql` inteiro de novo, que não apaga nada).
+> A v4 cria a pasta privada **fotos** no Storage do Supabase; a v6 adiciona periodização e dobras cutâneas.
 
 ### 2. Ligar o app ao Supabase
 1. No Supabase, abra **Project Settings → API** (ou o botão **Connect**).

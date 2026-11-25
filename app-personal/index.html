@@ -203,6 +203,28 @@ label.photoslot{display:flex;flex-direction:column;align-items:center;justify-co
 .bigphoto{width:100%;max-height:75dvh;object-fit:contain;border-radius:12px;display:block;background:#000}
 .answers td:first-child{color:var(--muted);width:45%}
 .answers td:last-child{text-align:left;white-space:normal}
+.alts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px;font-size:13px;color:var(--muted)}
+.alts .chip{padding:4px 10px;font-size:13px}
+.swapped{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--link);margin-top:4px}
+details.sd{margin-top:10px}
+.sdt{width:100%;border-collapse:collapse;margin-top:6px}
+.sdt th{font-size:12px;color:var(--muted);font-weight:600;text-align:left;padding:2px 4px}
+.sdt td{padding:3px 4px;border:0}
+.sdt td:first-child{font-weight:700;width:44px;text-align:center}
+.sdt input{padding:7px 8px;text-align:center}
+.ptl{display:flex;gap:3px;margin:10px 0 4px;border-radius:10px;overflow:hidden}
+.ptl div{background:var(--surface2);padding:6px 6px 5px;min-width:0;text-align:center}
+.ptl div span{display:block;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ptl div small{font-size:11px}
+.ptl div.on{background:var(--primary);color:var(--primary-ink)}
+.ptl div.on small{color:inherit;opacity:.85}
+.phase{border:1px solid var(--line);border-radius:12px;padding:8px 10px 10px;margin-top:8px}
+.phase .pg{display:grid;grid-template-columns:2fr 1fr;gap:6px}
+.phase .pg2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.phase label{margin:6px 0 2px}
+.phase input{padding:7px 9px}
+.period{border-left:4px solid var(--accent)}
+.presc em{font-style:normal;font-weight:500;opacity:.75}
 .offline{background:var(--warn);color:#000;text-align:center;font-size:13px;padding:6px;border-radius:10px;margin-bottom:12px}
 @media (max-width:380px){.grid4{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -741,7 +763,7 @@ function logCard(l, withName) {
       <small>${fmtDateTime(l.done_at)}${l.duration_min ? ` · ${l.duration_min} min` : ''} · ${det.reduce((a, d) => a + (d.done || 0), 0)}/${det.reduce((a, d) => a + (d.total || 0), 0)} séries</small></div>
       ${l.effort ? `<span class="eff">💪 ${l.effort}/10</span>` : ''}</div>
     ${l.comment ? `<p class="quote">“${esc(l.comment)}”</p>` : ''}
-    ${det.length ? `<details><summary>Ver exercícios e cargas</summary><table>${det.map(d => `<tr><td>${esc(d.name)}</td><td>${d.mode === 'cardio' ? `${d.done ? '✓ feito' : 'não feito'}${d.dur ? ' · ' + esc(d.dur) + ' min' : ''}` : `${d.done}/${d.total} séries${d.load ? ' · ' + esc(d.load) : ''}`}</td></tr>`).join('')}</table></details>` : ''}
+    ${det.length ? `<details><summary>Ver exercícios e cargas</summary><table>${det.map(d => `<tr><td>${esc(d.name)}${d.swappedFrom ? `<small>↔ no lugar de ${esc(d.swappedFrom)}</small>` : ''}${d.sets && d.sets.some(x => x.r || x.l) ? `<small>${d.sets.map(x => `${esc(x.r || '–')}×${esc(x.l || '–')}`).join(' · ')}</small>` : ''}</td><td>${d.mode === 'cardio' ? `${d.done ? '✓ feito' : 'não feito'}${d.dur ? ' · ' + esc(d.dur) + ' min' : ''}` : `${d.done}/${d.total} séries${d.load ? ' · ' + esc(d.load) : ''}`}</td></tr>`).join('')}</table></details>` : ''}
     ${l.trainer_reply ? `<div class="reply"><b>${S.role === 'trainer' ? 'Sua resposta' : '💬 ' + esc((S.me && S.me.trainer_name) || 'Seu personal')}</b><p>${esc(l.trainer_reply)}</p></div>` : ''}
     ${canReply ? `<button class="link" data-act="replyLog" data-id="${l.id}">${l.trainer_reply ? '✎ Editar resposta' : '💬 Responder'}</button>` : ''}
   </div>`;
@@ -754,7 +776,7 @@ function vStudent(s) {
   const plans = plansOf(s.id).map(p => `
     <button class="card row" data-act="openPlan" data-id="${p.id}">
       <div class="avatar">${esc(p.name.replace(/^Treino\s*/i, '').slice(0, 2) || 'T')}</div>
-      <div class="grow"><b>${esc(p.name)}</b><small>${(p.items || []).length} exercício(s)${p.focus ? ' · ' + esc(p.focus) : ''}</small>${validityChip(p)}</div>
+      <div class="grow"><b>${esc(p.name)}</b><small>${(p.items || []).length} exercício(s)${p.focus ? ' · ' + esc(p.focus) : ''}</small>${validityChip(p)} ${periodChip(p)}</div>
       <span class="chev">›</span></button>`).join('');
   const logs = logsOf(s.id);
   return `
@@ -816,6 +838,85 @@ function wrapBlocks(items, card) {
     `<div class="group"><div class="group-h">🔗 ${groupName(b.length)} — faça em sequência e descanse só no final</div>${b.map(card).join('')}</div>`).join('');
 }
 
+/* ---------- periodização ---------- */
+const PERIOD_PRESETS = {
+  linear8: { label: 'Linear · 8 semanas', phases: [
+    { name: 'Adaptação', weeks: 2, pct: -10, reps: '15', note: 'Carga leve, foco em técnica' },
+    { name: 'Hipertrofia', weeks: 3, pct: 0, reps: '10-12', note: 'Cadência controlada' },
+    { name: 'Força', weeks: 2, pct: 10, reps: '6-8', note: 'Descanso maior entre as séries' },
+    { name: 'Deload', weeks: 1, pct: -30, reps: '12', note: 'Semana leve para recuperar' }] },
+  ondulatoria6: { label: 'Ondulatória · 6 semanas', phases: [
+    { name: 'Volume', weeks: 1, pct: -5, reps: '12-15', note: '' }, { name: 'Intensidade', weeks: 1, pct: 5, reps: '8-10', note: '' },
+    { name: 'Volume', weeks: 1, pct: 0, reps: '12-15', note: '' }, { name: 'Intensidade', weeks: 1, pct: 8, reps: '6-8', note: '' },
+    { name: 'Pico', weeks: 1, pct: 12, reps: '4-6', note: 'Cargas altas, técnica perfeita' }, { name: 'Deload', weeks: 1, pct: -30, reps: '12', note: 'Recuperação' }] },
+  progressiva4: { label: 'Progressão de carga · 4 semanas', phases: [
+    { name: 'Semana base', weeks: 1, pct: 0, reps: '', note: '' }, { name: 'Progressão 1', weeks: 1, pct: 5, reps: '', note: '' },
+    { name: 'Progressão 2', weeks: 1, pct: 10, reps: '', note: '' }, { name: 'Deload', weeks: 1, pct: -20, reps: '', note: 'Semana leve' }] }
+};
+const perWeeks = per => (per && per.phases || []).reduce((a, f) => a + (Math.max(0, parseInt(f.weeks) || 0)), 0);
+function periodNow(p, date = localDay()) {
+  const per = p && p.period;
+  if (!per || !per.start || !(per.phases || []).length) return null;
+  const days = Math.round((new Date(date + 'T00:00') - new Date(per.start + 'T00:00')) / 864e5), total = perWeeks(per);
+  if (days < 0) return { status: 'antes', week: 0, total, startsIn: -days };
+  const week = Math.floor(days / 7) + 1;
+  if (week > total) return { status: 'fim', week, total };
+  let acc = 0;
+  for (const [idx, f] of per.phases.entries()) { acc += Math.max(0, parseInt(f.weeks) || 0); if (week <= acc) return { status: 'ativa', week, total, phase: f, idx }; }
+  return null;
+}
+const roundLoad = v => v >= 20 ? Math.round(v) : Math.round(v * 2) / 2;
+function adjustLoad(load, pct) {
+  if (!pct) return load;
+  const m = String(load || '').match(/\d+(?:[.,]\d+)?/); if (!m) return load;
+  return String(load).replace(m[0], fmtNum(roundLoad(parseFloat(m[0].replace(',', '.')) * (1 + pct / 100))));
+}
+const pctTxt = v => `${v > 0 ? '+' : ''}${v}%`;
+// Item como o aluno deve fazer hoje: exercício trocado (alternativa) e ajustes da fase da periodização.
+function effItem(P, i, pr) {
+  const it = { ...P.items[i] };
+  const sw = pr && pr.swap && pr.swap[i];
+  // Exercício trocado: a carga prescrita era do original, então não vale; o aluno anota a dele.
+  if (sw && sw !== it.ex) { it.orig = it.ex; it.ex = sw; it.load = ''; }
+  const pn = periodNow(P);
+  if (pn && pn.status === 'ativa' && modeOf(it) !== 'cardio') {
+    const f = pn.phase, pct = parseFloat(f.pct) || 0;
+    if (f.reps && modeOf(it) === 'reps' && it.tech !== 'piramide') it.reps = f.reps;
+    if (pct && it.load) { it.baseLoad = it.load; it.load = adjustLoad(it.load, pct); it.pct = pct; }
+  }
+  return it;
+}
+function periodTimeline(p, pn) {
+  const per = p.period;
+  return `<div class="ptl">${per.phases.map((f, idx) => `<div style="flex:${Math.max(1, parseInt(f.weeks) || 1)}" class="${pn && pn.status === 'ativa' && pn.idx === idx ? 'on' : ''}"><span>${esc(f.name || 'Fase')}</span><small>${parseInt(f.weeks) || 0} sem · ${pctTxt(parseFloat(f.pct) || 0)}</small></div>`).join('')}</div>`;
+}
+function periodChip(p) {
+  const pn = periodNow(p); if (!pn) return '';
+  return pn.status === 'ativa' ? `<span class="st ok">📈 Semana ${pn.week}/${pn.total} · ${esc(pn.phase.name)}</span>`
+    : pn.status === 'fim' ? `<span class="st warn">📈 Periodização concluída</span>` : `<span class="st">📈 Começa em ${pn.startsIn} dia(s)</span>`;
+}
+function syncPeriodEnds(p) { if (p.student_id && p.period && p.period.start) p.ends_on = localDay(new Date(p.period.start + 'T12:00').getTime() + (perWeeks(p.period) * 7 - 1) * 864e5); }
+function periodEditor(p, tpl) {
+  const per = p.period;
+  if (!per) return `<div class="card"><h3>📈 Periodização</h3>
+    <p class="muted" style="margin:6px 0 10px">Divida o treino em fases com ajuste automático de carga e repetições. O aluno vê em que semana está e a carga já calculada.</p>
+    <div class="chips" style="flex-wrap:wrap;margin:0">${Object.entries(PERIOD_PRESETS).map(([k, v]) => `<button class="chip" data-act="perPreset" data-k="${k}">${v.label}</button>`).join('')}<button class="chip" data-act="perPreset" data-k="custom">Personalizada</button></div></div>`;
+  const pn = tpl ? null : periodNow(p);
+  return `<div class="card period"><div class="row"><h3 class="grow">📈 Periodização</h3><button class="link" data-act="perRemove">Remover</button></div>
+    ${tpl ? '<small>Ao aplicar o modelo, a periodização começa no dia da aplicação.</small>' : `<label>Início</label><input type="date" data-perstart="1" value="${esc(per.start || '')}">`}
+    ${periodTimeline(p, pn)}
+    <small>${perWeeks(per)} semanas no total${pn ? (pn.status === 'ativa' ? ` · hoje: semana ${pn.week}, fase “${esc(pn.phase.name)}”` : pn.status === 'fim' ? ' · concluída' : ` · começa em ${pn.startsIn} dia(s)`) : ''}${!tpl ? ' · a validade do treino acompanha o fim da periodização' : ''}</small>
+    ${per.phases.map((f, idx) => `<div class="phase">
+      <div class="pg"><div><label>Fase ${idx + 1}</label><input data-ph="${idx}" data-pk="name" value="${esc(f.name)}" placeholder="Ex.: Hipertrofia"></div>
+        <div><label>Semanas</label><input data-ph="${idx}" data-pk="weeks" inputmode="numeric" value="${esc(f.weeks)}"></div></div>
+      <div class="pg2"><div><label>Carga (%)</label><input data-ph="${idx}" data-pk="pct" inputmode="numeric" value="${esc(f.pct)}" placeholder="0, +10, -20"></div>
+        <div><label>Reps (vazio = do exercício)</label><input data-ph="${idx}" data-pk="reps" value="${esc(f.reps || '')}" placeholder="10-12"></div></div>
+      <label>Orientação da fase</label><input data-ph="${idx}" data-pk="note" value="${esc(f.note || '')}" placeholder="Ex.: descanso maior entre as séries">
+      <button class="link" data-act="perDelPhase" data-ph="${idx}">✕ Remover fase</button></div>`).join('')}
+    <button class="btn block" style="margin-top:10px" data-act="perAddPhase">+ Adicionar fase</button>
+    <small>A carga de cada fase é calculada a partir da carga do exercício (ex.: 40 kg com +10% → 44 kg).</small></div>`;
+}
+
 /* ---------- personal: editor de treino (e de modelo) ---------- */
 function vPlan(s, p, tpl = false) {
   const items = p.items || [], lab = labelsOf(items);
@@ -849,6 +950,8 @@ function vPlan(s, p, tpl = false) {
       ${grid}
       ${m === 'cardio' ? '' : `<div class="techrow"><label>Técnica</label><select data-i="${i}" data-f="tech">${TECHS.map(([k, l]) => `<option value="${k}" ${(it.tech || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`}
       <input data-i="${i}" data-f="obs" value="${esc(it.obs)}" placeholder="Observação (ex.: cadência 3-0-1, ${m === 'reps' ? 'pegada aberta' : 'apoio nos joelhos'})">
+      <div class="alts">↔ Alternativas: ${(it.alts || []).map(id => { const x = exById(id); return x ? `<button class="chip" data-act="delAlt" data-i="${i}" data-id="${id}" title="Remover alternativa">${esc(x.name)} ✕</button>` : ''; }).join('') || '<span>nenhuma</span>'}
+        <button class="link" data-act="addAlt" data-i="${i}">+ adicionar</button></div>
       ${i > 0 ? `<button class="link" data-act="toggleLink" data-i="${i}">${it.link ? '✂️ Separar do exercício anterior' : '🔗 Juntar com o anterior (bi-set / circuito)'}</button>` : ''}
     </div>`;
   };
@@ -871,6 +974,7 @@ function vPlan(s, p, tpl = false) {
        <button class="btn block" data-act="dupPlan">Duplicar treino</button>
        <button class="btn block danger" data-act="delPlan">Excluir treino</button>`;
   return `${head}
+    ${periodEditor(p, tpl)}
     <div class="toolbar"><h2>Exercícios</h2><button class="btn primary" data-act="addItem">+ Adicionar</button></div>
     ${wrapBlocks(items, card) || empty(tpl ? 'Modelo vazio' : 'Treino vazio', 'Toque em “+ Adicionar” e escolha os exercícios da sua biblioteca.')}
     ${items.length > 1 ? `<p class="muted" style="margin-top:0">Dica: use “🔗 Juntar com o anterior” para montar bi-sets, tri-sets e circuitos.</p>` : ''}
@@ -908,9 +1012,13 @@ function applyDialog(t) {
   };
   dlg.showModal();
 }
-const planFromTemplate = (t, sid, weeks = 6) => api.addPlan({
-  student_id: sid, name: t.name, focus: t.focus || '', position: plansOf(sid).length,
-  items: JSON.parse(JSON.stringify(t.items || [])), ends_on: weeks ? localDay(Date.now() + weeks * 7 * 864e5) : null });
+function planFromTemplate(t, sid, weeks = 6) {
+  const p = { student_id: sid, name: t.name, focus: t.focus || '', position: plansOf(sid).length,
+    items: JSON.parse(JSON.stringify(t.items || [])), ends_on: weeks ? localDay(Date.now() + weeks * 7 * 864e5) : null };
+  // Modelo com periodização: começa hoje e a validade acompanha o fim do ciclo.
+  if (t.period && (t.period.phases || []).length) { p.period = { start: localDay(), phases: JSON.parse(JSON.stringify(t.period.phases)) }; syncPeriodEnds(p); }
+  return api.addPlan(p);
+}
 function newPlanDialog(s) {
   const dlg = $('#dlg');
   dlg.innerHTML = `<div class="dlg"><h3>Novo treino para ${esc(s.name.split(' ')[0])}</h3>
@@ -928,8 +1036,8 @@ function queuePlanSave(p) {
   planSaveFn = async () => {
     planSaveT = null; planSaveFn = null;
     try {
-      if (p.student_id) await api.updatePlan(p.id, { name: p.name, focus: p.focus, items: p.items, ends_on: p.ends_on || null, updated_at: new Date().toISOString() });
-      else await api.updateTemplate(p.id, { name: p.name, focus: p.focus, items: p.items, updated_at: new Date().toISOString() });
+      if (p.student_id) await api.updatePlan(p.id, { name: p.name, focus: p.focus, items: p.items, ends_on: p.ends_on || null, period: p.period || null, updated_at: new Date().toISOString() });
+      else await api.updateTemplate(p.id, { name: p.name, focus: p.focus, items: p.items, period: p.period || null, updated_at: new Date().toISOString() });
       const e2 = $('#saving'); if (e2) e2.textContent = 'Salvo ✓';
     } catch (e) { const e2 = $('#saving'); if (e2) e2.textContent = '⚠️ Não salvo'; toast('Erro ao salvar: ' + ptError(e)); }
   };
@@ -955,6 +1063,20 @@ const ANAM_FIELDS = [['lesoes', 'Lesões, dores ou cirurgias'], ['condicoes', 'D
   ['medicamentos', 'Medicamentos de uso contínuo'], ['atividade', 'Pratica atividade física hoje? Qual e quantas vezes por semana?'],
   ['disponibilidade', 'Dias e horários disponíveis para treinar'], ['obs', 'Algo mais que seu personal deve saber?']];
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+// Dobras cutâneas — Jackson & Pollock (densidade corporal) + equação de Siri (% de gordura).
+const SITES = [['peitoral', 'Peitoral'], ['axilar', 'Axilar média'], ['triceps', 'Tríceps'], ['subescapular', 'Subescapular'], ['abdominal', 'Abdominal'], ['suprailiaca', 'Suprailíaca'], ['coxa', 'Coxa']];
+const PROTO = { jp7: { label: 'Pollock 7 dobras', sites: { M: SITES.map(s => s[0]), F: SITES.map(s => s[0]) } },
+                jp3: { label: 'Pollock 3 dobras', sites: { M: ['peitoral', 'abdominal', 'coxa'], F: ['triceps', 'suprailiaca', 'coxa'] } } };
+function pollock(proto, sex, age, values) {
+  const P = PROTO[proto]; if (!P || !age || !['M', 'F'].includes(sex)) return null;
+  const sites = P.sites[sex], vals = sites.map(k => num(values[k]));
+  if (vals.some(v => v == null || v <= 0)) return null;
+  const S = vals.reduce((a, b) => a + b, 0);
+  const bd = proto === 'jp7'
+    ? (sex === 'M' ? 1.112 - 0.00043499 * S + 0.00000055 * S * S - 0.00028826 * age : 1.097 - 0.00046971 * S + 0.00000056 * S * S - 0.00012828 * age)
+    : (sex === 'M' ? 1.10938 - 0.0008267 * S + 0.0000016 * S * S - 0.0002574 * age : 1.0994921 - 0.0009929 * S + 0.0000023 * S * S - 0.0001392 * age);
+  return { sum: Math.round(S * 10) / 10, bd, bf: Math.round((495 / bd - 450) * 10) / 10 };
+}
 const assessOf = sid => S.assess.filter(a => a.student_id === sid).sort((a, b) => b.taken_on.localeCompare(a.taken_on) || String(b.created_at).localeCompare(String(a.created_at)));
 const num = v => { const t = String(v ?? '').trim().replace(',', '.'); if (!t) return null; const n = parseFloat(t); return isNaN(n) ? null : n; };
 const kg = v => v == null ? '–' : fmtNum(v) + ' kg';
@@ -977,6 +1099,7 @@ function metricSeries(list, sid) {
   add('weight', 'Peso', ' kg', a => num(a.weight));
   add('body_fat', '% gordura', '%', a => num(a.body_fat));
   add('lean', 'Massa magra', ' kg', a => { const c = comp(a); return c ? c.lean : null; });
+  add('sum_sf', 'Soma das dobras', ' mm', a => a.skinfolds && a.skinfolds.sum ? num(a.skinfolds.sum) : null);
   add('bmi', 'IMC', '', a => bmi(a, sid));
   MEASURES.forEach(([k, l]) => add(k, l, ' cm', a => num((a.measures || {})[k])));
   return out;
@@ -1024,6 +1147,7 @@ function assessCard(a, sid, editable) {
   return `<div class="card">
     <div class="row"><div class="grow"><b>Avaliação de ${fmtDay(a.taken_on)}</b><small>${parts.join(' · ') || 'Sem medidas principais'}</small></div>
       ${editable ? `<button class="icon" data-act="editAssess" data-id="${a.id}" aria-label="Editar avaliação">✎</button>` : ''}</div>
+    ${a.skinfolds && a.skinfolds.sum ? `<details><summary>Dobras · ${esc((PROTO[a.skinfolds.proto] || {}).label || 'Pollock')} · Σ ${fmtNum(num(a.skinfolds.sum))} mm${a.skinfolds.bf != null ? ` → ${fmtNum(num(a.skinfolds.bf))}%` : ''}</summary><table>${SITES.filter(([k]) => num((a.skinfolds.values || {})[k]) != null).map(([k, l]) => `<tr><td>${l}</td><td>${fmtNum(num(a.skinfolds.values[k]))} mm</td></tr>`).join('')}</table></details>` : ''}
     ${ms.length ? `<details><summary>Circunferências (${ms.length})</summary><table>${ms.map(([k, l]) => `<tr><td>${l}</td><td>${fmtNum(num(a.measures[k]))} cm</td></tr>`).join('')}</table></details>` : ''}
     ${(a.photos || []).length ? `<div class="thumbs">${POSES.map(([k]) => { const ph = a.photos.find(p => p.pos === k); return ph ? photoImg(ph.path) : ''; }).join('')}</div>` : ''}
     ${a.notes ? `<p class="quote">${esc(a.notes)}</p>` : ''}
@@ -1076,6 +1200,8 @@ function assessDialog(sid, a) {
   const st = studentById(sid), isNew = !a;
   a ||= { taken_on: localDay(), height: heightOf({}, sid), measures: {}, photos: [] };
   const v = x => x == null ? '' : String(x).replace('.', ',');
+  const prevSf = (assessOf(sid).find(x => x.skinfolds) || {}).skinfolds || {};
+  const sf = a.skinfolds || { proto: prevSf.proto || '', sex: prevSf.sex || 'F', age: prevSf.age || '', values: {} };
   const picked = {};
   const dlg = $('#dlg');
   dlg.innerHTML = `<form class="dlg" id="asForm"><h3>${isNew ? 'Nova avaliação' : 'Editar avaliação'} · ${esc(st.name.split(' ')[0])}</h3>
@@ -1086,6 +1212,14 @@ function assessDialog(sid, a) {
       <div><label>% gordura</label><input name="body_fat" inputmode="decimal" value="${v(a.body_fat)}" placeholder="22"></div>
     </div>
     <div class="calc" id="asCalc"></div>
+    <div class="group-title">Dobras cutâneas (mm) — opcional</div>
+    <div class="grid3">
+      <div><label>Protocolo</label><select name="sf_proto"><option value="">Não usar</option>${Object.entries(PROTO).map(([k, v]) => `<option value="${k}" ${sf.proto === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
+      <div><label>Sexo</label><select name="sf_sex"><option value="F" ${sf.sex !== 'M' ? 'selected' : ''}>Fem.</option><option value="M" ${sf.sex === 'M' ? 'selected' : ''}>Masc.</option></select></div>
+      <div><label>Idade</label><input name="sf_age" inputmode="numeric" value="${esc(sf.age || '')}"></div>
+    </div>
+    <div class="mgrid" id="sfFields">${SITES.map(([k, l]) => `<div data-site="${k}"><label>${l}</label><input name="sf_${k}" inputmode="decimal" value="${v((sf.values || {})[k])}"></div>`).join('')}</div>
+    <div class="calc" id="sfCalc"></div>
     <div class="group-title">Circunferências (cm)</div>
     <div class="mgrid">${MEASURES.map(([k, l]) => `<div><label>${l}</label><input name="m_${k}" inputmode="decimal" value="${v((a.measures || {})[k])}"></div>`).join('')}</div>
     <div class="group-title">Fotos de evolução</div>
@@ -1101,7 +1235,21 @@ function assessDialog(sid, a) {
     const b = w && h ? w / Math.pow(h / 100, 2) : null;
     $('#asCalc').textContent = [b ? `IMC ${fmtNum(b)} (${bmiClass(b)})` : '', w && f != null ? `massa magra ${kg(w * (1 - f / 100))} · massa gorda ${kg(w * f / 100)}` : ''].filter(Boolean).join(' · ');
   };
-  form.addEventListener('input', calc); calc();
+  const sfRead = () => { const values = {}; SITES.forEach(([k]) => { const n = num(form['sf_' + k].value); if (n != null) values[k] = n; });
+    return { proto: form.sf_proto.value, sex: form.sf_sex.value, age: parseInt(form.sf_age.value) || null, values }; };
+  const sfCalc = () => {
+    const r = sfRead(), need = r.proto ? PROTO[r.proto].sites[r.sex] : [];
+    document.querySelectorAll('#sfFields [data-site]').forEach(d => { d.hidden = !need.includes(d.dataset.site); });
+    $('#sfFields').hidden = !r.proto;
+    const res = r.proto ? pollock(r.proto, r.sex, r.age, r.values) : null;
+    const html = !r.proto ? '' : res
+      ? `Σ ${fmtNum(res.sum)} mm · densidade ${res.bd.toFixed(4).replace('.', ',')} → <b>${fmtNum(res.bf)}% de gordura</b> (Siri) <button type="button" class="btn" style="padding:6px 12px;font-size:13px;margin-left:4px" data-act="sfUse" data-bf="${res.bf}">Usar no % de gordura</button>`
+      : `Preencha ${need.length} dobras e a idade para calcular.`;
+    // Só redesenha se mudou — senão o botão "Usar" some no meio do toque.
+    if (sfCalc._last !== html) { $('#sfCalc').innerHTML = html; sfCalc._last = html; }
+    return res;
+  };
+  form.addEventListener('input', () => { calc(); sfCalc(); }); form.addEventListener('change', sfCalc); calc(); sfCalc();
   POSES.forEach(([k, l]) => form[`ph_${k}`].addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
     picked[k] = f;
@@ -1114,7 +1262,11 @@ function assessDialog(sid, a) {
     e.preventDefault();
     const btn = form.querySelector('button.primary'); btn.disabled = true;
     const measures = {}; MEASURES.forEach(([k]) => { const n = num(form['m_' + k].value); if (n != null) measures[k] = n; });
-    const data = { taken_on: form.taken_on.value, weight: num(form.weight.value), height: num(form.height.value), body_fat: num(form.body_fat.value), measures, notes: form.notes.value.trim() };
+    const sfr = sfRead(), sfres = sfr.proto ? pollock(sfr.proto, sfr.sex, sfr.age, sfr.values) : null;
+    const skinfolds = sfr.proto && Object.keys(sfr.values).length ? { ...sfr, sum: sfres ? sfres.sum : null, bf: sfres ? sfres.bf : null } : null;
+    // Sem % de gordura digitado: usa o valor calculado pelas dobras.
+    const bodyFat = num(form.body_fat.value) ?? (sfres ? sfres.bf : null);
+    const data = { taken_on: form.taken_on.value, weight: num(form.weight.value), height: num(form.height.value), body_fat: bodyFat, measures, skinfolds, notes: form.notes.value.trim() };
     try {
       let row = a;
       if (isNew) { row = await api.addAssessment({ student_id: sid, ...data, photos: [] }); S.assess.push(row); }
@@ -1247,6 +1399,14 @@ function progress(pid) {
   const pr = store.get(progKey(pid), null);
   return pr && pr.date === localDay() ? pr : { date: localDay(), done: {}, loads: {}, start: null };
 }
+function lastSetLoad(plan, exName, k) {
+  for (const l of S.logs) {
+    if (l.plan_id !== plan.id) continue;
+    const d = (l.details || []).find(x => x.name === exName && x.sets);
+    if (d && d.sets[k] && d.sets[k].l) return d.sets[k].l;
+  }
+  return '';
+}
 function lastLoad(plan, exName) {
   for (const l of S.logs) {
     if (l.plan_id !== plan.id) continue;
@@ -1299,15 +1459,17 @@ function renderStudentApp() {
   const last = S.logs[0];
   const lab = labelsOf(P.items || []);
   const card = i => {
-    const it = P.items[i], m = modeOf(it);
+    const it = effItem(P, i, pr), m = modeOf(it);
     const ex = exById(it.ex) || { name: 'Exercício', grp: '', video: '', notes: '' };
+    const orig = it.orig && exById(it.orig);
     const n = nSets(it), done = pr.done[i] || [];
     const load = pr.loads[i] ?? (lastLoad(P, ex.name) || it.load || '');
+    const sd = (pr.sd && pr.sd[i]) || {};
     const rest = isLastInBlock(P.items, i) ? parseInt(it.rest) || 0 : 0;
     const tech = m === 'cardio' ? null : techOf(it);
     const presc = m === 'cardio'
       ? `<span>🏃 ${esc(it.dur || '20')} min</span>${it.int ? `<span>${esc(it.int)}</span>` : ''}`
-      : `<span>${n} séries</span>${m === 'time' ? `<span>⏱ ${durSec(it)} s cada</span>` : `<span>${esc(it.reps || '-')} reps</span>`}${it.load ? `<span>🏋️ ${esc(it.load)}</span>` : ''}${rest ? `<span>💤 ${rest}s descanso</span>` : ''}${tech ? `<span class="tech">🔥 ${tech[1]}</span>` : ''}`;
+      : `<span>${n} séries</span>${m === 'time' ? `<span>⏱ ${durSec(it)} s cada</span>` : `<span>${esc(it.reps || '-')} reps</span>`}${it.load ? `<span>🏋️ ${esc(it.load)}${it.pct ? ` <em>(${esc(it.baseLoad)} ${pctTxt(it.pct)})</em>` : ''}</span>` : ''}${rest ? `<span>💤 ${rest}s descanso</span>` : ''}${tech ? `<span class="tech">🔥 ${tech[1]}</span>` : ''}`;
     const repsList = m === 'reps' ? String(it.reps || '').split(/\s*[-\/]\s*/).filter(Boolean) : [];
     const perSet = n > 1 && repsList.length === n;
     const sets = m === 'cardio'
@@ -1317,8 +1479,13 @@ function renderStudentApp() {
           const b = `<button class="set ${done[k] ? 'done' : ''}" data-act="toggleSet" data-i="${i}" data-k="${k}" aria-label="Série ${k + 1}${perSet ? ', ' + esc(repsList[k]) + ' repetições' : ''}">${k + 1}</button>`;
           return perSet ? `<div class="setwrap">${b}<small>${esc(repsList[k])} reps</small></div>` : b;
         }).join('');
+    const setRows = m === 'reps' ? Array.from({ length: n }, (_, k) => {
+      const v = sd[k] || {};
+      return `<tr><td>${k + 1}</td><td><input inputmode="numeric" data-sd="${i}:${k}:r" value="${esc(v.r || '')}" placeholder="${esc((perSet ? repsList[k] : it.reps) || '')}"></td>
+        <td><input inputmode="decimal" data-sd="${i}:${k}:l" value="${esc(v.l || '')}" placeholder="${esc(lastSetLoad(P, ex.name, k) || load || 'kg')}"></td></tr>`; }).join('') : '';
     return `<div class="card item ${done.filter(Boolean).length >= n ? 'complete' : ''}" id="it${i}">
       <h3>${lab[i]}. ${esc(ex.name)}</h3><small>${esc(ex.grp || '')}${m === 'time' ? ' · por tempo: toque na série para iniciar o cronômetro' : ''}</small>
+      ${orig ? `<span class="swapped">↔ No lugar de ${esc(orig.name)}</span>` : ''}
       <div class="presc">${presc}</div>
       ${tech ? `<p class="obs techinfo"><b>${tech[1]}:</b> ${esc(tech[2])}</p>` : ''}
       ${it.obs ? `<p class="obs">${esc(it.obs)}</p>` : ''}
@@ -1326,6 +1493,9 @@ function renderStudentApp() {
       ${ex.notes ? `<details><summary>Como executar</summary><p style="margin:6px 0 0">${esc(ex.notes)}</p></details>` : ''}
       <div class="sets">${sets}</div>
       ${m === 'cardio' ? '' : `<div class="loadin"><label for="ld${i}">Carga usada</label><input id="ld${i}" data-load="${i}" value="${esc(load)}" placeholder="ex.: 20 kg"></div>`}
+      ${setRows ? `<details class="sd" ${Object.keys(sd).length ? 'open' : ''}><summary>📝 Anotar reps e carga de cada série</summary>
+        <table class="sdt"><tr><th>Série</th><th>Reps feitas</th><th>Carga</th></tr>${setRows}</table></details>` : ''}
+      ${(P.items[i].alts || []).length ? `<button class="link" data-act="swapEx" data-i="${i}">↔ ${orig ? 'Trocar de novo / voltar ao original' : 'Aparelho ocupado? Trocar exercício'}</button>` : ''}
     </div>`;
   };
   const items = wrapBlocks(P.items || [], card);
@@ -1341,6 +1511,12 @@ function renderStudentApp() {
     ${(vd => !vd ? '' : vd.n < 0
       ? `<div class="msg info">⚠️ Este treino venceu em ${fmtDay(P.ends_on)}. Fale com ${esc(S.me.trainer_name || 'seu personal')} para renovar — enquanto isso, pode continuar usando.</div>`
       : `<p style="margin:0 0 8px">${validityChip(P)}</p>`)(validity(P))}
+    ${(pn => !pn ? '' : pn.status === 'ativa'
+      ? `<div class="card period"><b>📈 Semana ${pn.week} de ${pn.total} · ${esc(pn.phase.name)}</b>
+          <small>${[(parseFloat(pn.phase.pct) || 0) ? `cargas ${pctTxt(parseFloat(pn.phase.pct))}` : 'cargas normais', pn.phase.reps ? `${esc(pn.phase.reps)} reps` : '', esc(pn.phase.note || '')].filter(Boolean).join(' · ')}</small>
+          ${periodTimeline(P, pn)}<small>As cargas abaixo já estão ajustadas para esta fase.</small></div>`
+      : pn.status === 'fim' ? `<div class="msg info">📈 Você concluiu a periodização de ${pn.total} semanas! 🎉 Fale com ${esc(S.me.trainer_name || 'seu personal')} para o próximo ciclo.</div>`
+      : `<div class="msg info">📈 Sua periodização começa em ${pn.startsIn} dia(s).</div>`)(periodNow(P))}
     <div class="muted" id="progTxt"></div><div class="progress"><i id="progBar"></i></div>
     ${items || empty('Treino vazio', 'Seu personal ainda não adicionou exercícios aqui.')}
     ${(P.items || []).length ? `<button class="btn primary block" data-act="finish">✅ Finalizar treino</button>` : ''}
@@ -1387,11 +1563,21 @@ function finishDialog() {
       student_id: S.me.id, plan_id: P.id, plan_name: P.name, done_at: new Date().toISOString(),
       duration_min: pr.start ? Math.min(300, Math.max(1, Math.round((Date.now() - pr.start) / 60000))) : null,
       effort, comment: e.target.comment.value.trim(),
-      details: (P.items || []).map((it, i) => {
-        const ex = exById(it.ex) || { name: 'Exercício' };
-        const done = (pr.done[i] || []).slice(0, nSets(it)).filter(Boolean).length;
-        if (modeOf(it) === 'cardio') return { name: ex.name, mode: 'cardio', done, total: 1, load: '', dur: it.dur || '' };
-        return { name: ex.name, mode: modeOf(it), done, total: nSets(it), load: (pr.loads[i] ?? (lastLoad(P, ex.name) || it.load || '')).trim() };
+      details: (P.items || []).map((_, i) => {
+        const it = effItem(P, i, pr), ex = exById(it.ex) || { name: 'Exercício' }, orig = it.orig && exById(it.orig);
+        const extra = orig ? { swappedFrom: orig.name } : {};
+        const doneArr = (pr.done[i] || []).slice(0, nSets(it)), done = doneArr.filter(Boolean).length;
+        if (modeOf(it) === 'cardio') return { name: ex.name, mode: 'cardio', done, total: 1, load: '', dur: it.dur || '', ...extra };
+        let load = (pr.loads[i] ?? (lastLoad(P, ex.name) || it.load || '')).trim();
+        const sd = (pr.sd && pr.sd[i]) || {};
+        if (Object.keys(sd).length) {
+          extra.sets = Array.from({ length: nSets(it) }, (_, k) => ({ r: ((sd[k] || {}).r || '').trim(), l: ((sd[k] || {}).l || '').trim(), done: !!doneArr[k] }));
+          // a maior carga anotada vira a carga do exercício (usada no gráfico de evolução)
+          const best = extra.sets.map(x => ({ x, v: parseLoad(x.l) })).filter(o => o.v != null).sort((a, b) => b.v - a.v)[0];
+          if (best) load = /[a-z]/i.test(best.x.l) ? best.x.l : best.x.l + ' kg';
+        }
+        if (it.pct) extra.phase = `${pctTxt(it.pct)}`;
+        return { name: ex.name, mode: modeOf(it), done, total: nSets(it), load, ...extra };
       })
     };
     saveLog(log);
@@ -1656,6 +1842,33 @@ function pickerDialog(plan) {
   draw();
   if (!dlg.open) dlg.showModal();
 }
+function altDialog(p, i) {
+  const it = p.items[i], base = exById(it.ex) || {};
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<div class="dlg"><h3>Alternativas para ${esc(base.name || 'o exercício')}</h3>
+    <p class="muted" style="margin:6px 0 0">O aluno pode trocar por uma destas quando o aparelho estiver ocupado. O mesmo grupo muscular aparece primeiro.</p>
+    <input id="aq" type="search" placeholder="Buscar…" style="margin-top:10px"><div class="pick" id="alist"></div>
+    <div class="actions"><button class="btn primary" data-act="closeDlg">Concluir</button></div></div>`;
+  const draw = () => {
+    const q = $('#aq').value.toLowerCase(), alts = it.alts || [];
+    $('#alist').innerHTML = S.exercises.filter(e => e.id !== it.ex && (!q || e.name.toLowerCase().includes(q) || (e.grp || '').toLowerCase().includes(q)))
+      .sort((a, b) => ((a.grp === base.grp ? 0 : 1) - (b.grp === base.grp ? 0 : 1)) || (a.grp + a.name).localeCompare(b.grp + b.name, 'pt'))
+      .map(e => `<button data-act="pickAlt" data-id="${e.id}"><span><b>${esc(e.name)}</b><small>${esc(e.grp)}${e.video ? ' · 🎬' : ''}</small></span><span>${alts.includes(e.id) ? '✓' : '+'}</span></button>`).join('');
+  };
+  dlg._draw = draw; dlg._plan = p; dlg._i = i;
+  $('#aq').addEventListener('input', draw); draw();
+  if (!dlg.open) dlg.showModal();
+}
+function swapDialog(P, i) {
+  const it = P.items[i], pr = progress(P.id), cur = (pr.swap && pr.swap[i]) || it.ex;
+  const opts = [it.ex, ...(it.alts || [])].map(exById).filter(Boolean);
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<div class="dlg"><h3>Trocar exercício</h3>
+    <p class="muted" style="margin:6px 0 0">Aparelho ocupado? Escolha uma das alternativas que seu personal deixou. Vale só para o treino de hoje.</p>
+    <div class="pick">${opts.map((e, k) => `<button data-act="pickSwap" data-i="${i}" data-id="${e.id}"><span><b>${esc(e.name)}</b><small>${k === 0 ? 'Exercício original' : esc(e.grp || '')}${e.video ? ' · 🎬 com vídeo' : ''}</small></span><span>${e.id === cur ? '✓' : ''}</span></button>`).join('')}</div>
+    <div class="actions"><button class="btn" data-act="closeDlg">Cancelar</button></div></div>`;
+  dlg.showModal();
+}
 const BASIC = [['Agachamento livre', 'Pernas'], ['Leg press 45°', 'Pernas'], ['Cadeira extensora', 'Pernas'], ['Mesa flexora', 'Pernas'],
   ['Elevação pélvica', 'Glúteos'], ['Supino reto com barra', 'Peito'], ['Crucifixo com halteres', 'Peito'], ['Puxada frontal', 'Costas'],
   ['Remada baixa', 'Costas'], ['Desenvolvimento com halteres', 'Ombros'], ['Elevação lateral', 'Ombros'], ['Rosca direta', 'Bíceps'],
@@ -1742,7 +1955,7 @@ const actions = {
   dupPlan: async () => {
     flushPlanSave();
     const { s, p } = cur();
-    const c = await api.addPlan({ student_id: s.id, name: p.name + ' (cópia)', focus: p.focus, position: plansOf(s.id).length, items: p.items, ends_on: p.ends_on || null });
+    const c = await api.addPlan({ student_id: s.id, name: p.name + ' (cópia)', focus: p.focus, position: plansOf(s.id).length, items: p.items, ends_on: p.ends_on || null, period: p.period || null });
     S.plans.push(c); go({ name: 'plan', sid: s.id, pid: c.id }); toast('Treino duplicado');
   },
   delPlan: async () => {
@@ -1783,6 +1996,34 @@ const actions = {
     dlg.innerHTML = `<div class="dlg"><img class="bigphoto" src="${esc(el.src)}" alt="Foto de avaliação"><div class="actions"><button class="btn primary" data-act="closeDlg">Fechar</button></div></div>`;
     dlg.showModal();
   },
+  // periodização
+  perPreset: el => {
+    const { p, tpl } = cur(), k = el.dataset.k;
+    const phases = k === 'custom' ? [{ name: 'Fase 1', weeks: 4, pct: 0, reps: '', note: '' }] : JSON.parse(JSON.stringify(PERIOD_PRESETS[k].phases));
+    p.period = { start: localDay(), phases }; if (!tpl) syncPeriodEnds(p);
+    render(); queuePlanSave(p); toast(k === 'custom' ? 'Periodização criada — ajuste as fases' : `Periodização “${PERIOD_PRESETS[k].label}” aplicada`);
+  },
+  perAddPhase: () => { const { p, tpl } = cur(); p.period.phases.push({ name: 'Nova fase', weeks: 1, pct: 0, reps: '', note: '' }); if (!tpl) syncPeriodEnds(p); render(); queuePlanSave(p); },
+  perDelPhase: el => { const { p, tpl } = cur(); p.period.phases.splice(+el.dataset.ph, 1); if (!p.period.phases.length) p.period = null; else if (!tpl) syncPeriodEnds(p); render(); queuePlanSave(p); },
+  perRemove: () => { const { p } = cur(); if (!confirm('Remover a periodização deste treino?')) return; p.period = null; render(); queuePlanSave(p); },
+  // alternativas de exercício
+  addAlt: el => altDialog(cur().p, +el.dataset.i),
+  pickAlt: el => {
+    const dlg = $('#dlg'), it = dlg._plan.items[dlg._i], id = el.dataset.id;
+    it.alts = it.alts || []; it.alts = it.alts.includes(id) ? it.alts.filter(x => x !== id) : [...it.alts, id];
+    queuePlanSave(dlg._plan); dlg._draw();
+  },
+  delAlt: el => { const { p } = cur(), it = p.items[+el.dataset.i]; it.alts = (it.alts || []).filter(x => x !== el.dataset.id); render(); queuePlanSave(p); },
+  swapEx: el => swapDialog(S.plans[curPlan], +el.dataset.i),
+  pickSwap: el => {
+    const P = S.plans[curPlan], i = +el.dataset.i, pr = progress(P.id), id = el.dataset.id;
+    pr.swap = pr.swap || {}; pr.sd = pr.sd || {};
+    if (id === P.items[i].ex) delete pr.swap[i]; else pr.swap[i] = id;
+    delete pr.loads[i]; delete pr.sd[i];
+    store.set(progKey(P.id), pr); $('#dlg').close(); render();
+    toast(id === P.items[i].ex ? 'De volta ao exercício original' : `Trocado por ${exById(id).name} — só no treino de hoje`);
+  },
+  sfUse: el => { const f = $('#asForm'); f.body_fat.value = String(el.dataset.bf).replace('.', ','); f.body_fat.dispatchEvent(new Event('input', { bubbles: true })); toast('% de gordura preenchido pelas dobras'); },
   // modelos
   newTemplate: () => formDialog('Novo modelo de treino', [{ k: 'name', label: 'Nome do modelo', req: true, ph: 'Ex.: Hipertrofia iniciante A' }, { k: 'focus', label: 'Foco / descrição', ph: 'Ex.: Inferiores + core' }], {}, async d => {
     const t = await api.addTemplate({ ...d, items: [] }); S.templates.push(t); $('#dlg').close(); go({ name: 'template', tid: t.id });
@@ -1792,14 +2033,14 @@ const actions = {
     flushPlanSave();
     const { p } = cur();
     formDialog('Salvar como modelo', [{ k: 'name', label: 'Nome do modelo', req: true }], { name: p.name + (p.focus ? ' — ' + p.focus : '') }, async d => {
-      const t = await api.addTemplate({ name: d.name, focus: p.focus || '', items: JSON.parse(JSON.stringify(p.items)) });
+      const t = await api.addTemplate({ name: d.name, focus: p.focus || '', items: JSON.parse(JSON.stringify(p.items)), period: p.period ? { phases: JSON.parse(JSON.stringify(p.period.phases)) } : null });
       S.templates.push(t); toast('Modelo salvo — veja na aba 📋 Modelos');
     }, '<p class="muted" style="margin:8px 0 0">O modelo guarda os exercícios, séries, bi-sets e observações para você aplicar em outros alunos.</p>');
   },
   applyTemplate: () => { flushPlanSave(); applyDialog(cur().p); },
   dupTemplate: async () => {
     flushPlanSave(); const { p } = cur();
-    const t = await api.addTemplate({ name: p.name + ' (cópia)', focus: p.focus || '', items: JSON.parse(JSON.stringify(p.items || [])) });
+    const t = await api.addTemplate({ name: p.name + ' (cópia)', focus: p.focus || '', items: JSON.parse(JSON.stringify(p.items || [])), period: p.period ? JSON.parse(JSON.stringify(p.period)) : null });
     S.templates.push(t); go({ name: 'template', tid: t.id }); toast('Modelo duplicado');
   },
   delTemplate: async () => {
@@ -1865,6 +2106,20 @@ document.addEventListener('input', e => {
     exFilter.q = t.value; const pos = t.selectionStart; render();
     const n = $('#exq'); n.focus(); n.setSelectionRange(pos, pos); return;
   }
+  if (t.dataset.sd && S.role === 'student') {
+    const [i, k, f] = t.dataset.sd.split(':'), P = S.plans[curPlan], pr = progress(P.id);
+    pr.sd = pr.sd || {}; pr.sd[i] = pr.sd[i] || {}; pr.sd[i][k] = { ...(pr.sd[i][k] || {}), [f]: t.value };
+    pr.start ||= Date.now(); store.set(progKey(P.id), pr); return;
+  }
+  if ((t.dataset.ph !== undefined || t.dataset.perstart) && S.role === 'trainer') {
+    const { p, tpl } = cur(); if (!p || !p.period) return;
+    if (t.dataset.perstart) p.period.start = t.value || localDay();
+    else { const f = t.dataset.pk; p.period.phases[+t.dataset.ph][f] = ['weeks', 'pct'].includes(f) ? (t.value === '' ? '' : (parseFloat(t.value.replace(',', '.')) || 0)) : t.value; }
+    if (!tpl) syncPeriodEnds(p);
+    queuePlanSave(p);
+    if (t.dataset.perstart) render();   // atualiza "hoje: semana X" e a linha do tempo
+    return;
+  }
   if (t.dataset.load !== undefined && S.role === 'student') {
     const P = S.plans[curPlan], pr = progress(P.id); pr.loads[+t.dataset.load] = t.value; store.set(progKey(P.id), pr); return;
   }
@@ -1879,6 +2134,7 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset && t.dataset.pref) { setPref(t.dataset.pref, t.type === 'checkbox' ? t.checked : (t.value || null)); return; }
+  if (t.dataset && t.dataset.ph !== undefined && S.role === 'trainer') { render(); return; }   // fase editada: redesenha a linha do tempo
   if (t.tagName === 'SELECT' && t.dataset.f && S.role === 'trainer') {
     const { p } = cur(); if (p && p.items[+t.dataset.i][t.dataset.f] !== t.value) { p.items[+t.dataset.i][t.dataset.f] = t.value; queuePlanSave(p); }
   }
