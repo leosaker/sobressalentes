@@ -13,6 +13,12 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
 - **Acompanhamento**: aviso de treino novo, alunos sem treinar há 7+ dias, convites pendentes,
   treinos em 7 e 30 dias, esforço médio, gráfico semanal, comentários e cargas usadas em cada exercício
 - Mudou o treino? O aluno vê na hora, sem precisar reenviar link
+- **Avaliação física**: peso, altura, % de gordura e 10 circunferências, com IMC, massa magra e massa gorda
+  calculados na hora, gráfico de evolução de cada medida e comparação com a avaliação anterior
+- **Fotos de evolução** (frente, lado e costas), comprimidas no celular e guardadas em pasta privada:
+  só você e o aluno veem. Comparação "primeira × última" lado a lado
+- **Anamnese e PAR-Q**: o aluno responde no app (aparece um aviso até ele responder). Se ele marcar "sim"
+  em alguma pergunta do PAR-Q, você e ele veem o alerta para pedir liberação médica
 - **Evolução de carga**: gráfico por exercício com as cargas que o aluno anotou (ex.: 30 kg → 42,5 kg, +42%)
 - **Validade do treino**: data de vencimento (padrão de 6 semanas, com atalhos de 4/6/8/12) e aviso de "treinos para renovar"
 - **Responder o aluno**: responda o comentário de cada treino; ele recebe o aviso no app
@@ -33,6 +39,7 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
 - Anota a carga usada (o app lembra a do último treino)
 - Ao finalizar: nota de esforço (1–10) e comentário para o personal
 - Vê a resposta do personal, o próprio gráfico de evolução de carga e quando o treino vence
+- Aba **📏 Avaliação**: suas medidas, gráficos, fotos de evolução e o questionário de saúde
 - Histórico e treinos do mês. Funciona offline: o registro é enviado quando a internet volta
 
 ## Como colocar no ar (uns 15 minutos, tudo grátis)
@@ -45,8 +52,9 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
    insert into public.trainer_allowlist (email) values ('seu-email@exemplo.com');
    ```
 
-> **Já tinha rodado o `schema.sql` antes?** Rode também `supabase/migracao-v2.sql` e `supabase/migracao-v3.sql`
-> (ou rode o `schema.sql` inteiro de novo, que não apaga nada). Isso adiciona validade, respostas, modelos e tipos de exercício.
+> **Já tinha rodado o `schema.sql` antes?** Rode também as atualizações que faltam, em ordem:
+> `supabase/migracao-v2.sql`, `migracao-v3.sql` e `migracao-v4.sql` (ou rode o `schema.sql` inteiro de novo, que não apaga nada).
+> A v4 cria a pasta privada **fotos** no Storage do Supabase.
 
 ### 2. Ligar o app ao Supabase
 1. No Supabase, abra **Project Settings → API** (ou o botão **Connect**).

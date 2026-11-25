@@ -172,6 +172,32 @@ label.checkrow input{width:22px;height:22px;flex:none;accent-color:var(--primary
 .obs.techinfo{border-left-color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent)}
 .setwrap{display:flex;flex-direction:column;align-items:center;gap:2px}
 .setwrap small{font-size:11px;font-weight:600}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:0 8px}
+.grid3 label,.mgrid label{margin:10px 0 3px}
+.grid3 input,.mgrid input{padding:8px 10px}
+.mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:0 8px}
+.calc{font-size:13px;color:var(--muted);margin-top:8px;min-height:18px}
+.photos3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+label.photoslot{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;aspect-ratio:3/4;border:2px dashed var(--line);border-radius:12px;overflow:hidden;position:relative;cursor:pointer;margin:0;background:var(--surface2)}
+.photoslot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.photoslot span{position:relative;z-index:1;background:rgba(0,0,0,.5);color:#fff;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;margin-bottom:6px}
+.photoslot.empty{justify-content:center}
+.photoslot.empty span{background:none;color:var(--muted);font-size:13px;text-align:center;margin:0}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.cmp figure{margin:0;text-align:center}
+.cmp img,.thumbs img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;background:var(--surface2);display:block;cursor:zoom-in}
+.cmp figcaption{font-size:12px;color:var(--muted);margin-top:4px}
+.nophoto{aspect-ratio:3/4;border-radius:10px;background:var(--surface2);display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;padding:8px}
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.q{border-bottom:1px solid var(--line);padding:10px 0}
+.q p{margin:0 0 6px;font-size:14.5px;line-height:1.4}
+.yn{display:flex;gap:22px}
+.yn label{display:flex;align-items:center;gap:6px;margin:0;color:var(--text);font-size:15px;cursor:pointer}
+.yn input{width:20px;height:20px;accent-color:var(--primary)}
+.stat .delta{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.bigphoto{width:100%;max-height:75dvh;object-fit:contain;border-radius:12px;display:block;background:#000}
+.answers td:first-child{color:var(--muted);width:45%}
+.answers td:last-child{text-align:left;white-space:normal}
 .offline{background:var(--warn);color:#000;text-align:center;font-size:13px;padding:6px;border-radius:10px;margin-bottom:12px}
 @media (max-width:380px){.grid4{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -286,6 +312,19 @@ function makeApi(sb) {
     plans: studentId => { let q = sb.from('plans').select('*'); if (studentId) q = q.eq('student_id', studentId); return q.order('position').then(chk); },
     addPlan: p => sb.from('plans').insert(p).select().single().then(chk),
     templates: () => sb.from('templates').select('*').order('name').then(chk),
+    assessments: sid => { let q = sb.from('assessments').select('*'); if (sid) q = q.eq('student_id', sid); return q.order('taken_on', { ascending: false }).order('created_at', { ascending: false }).then(chk); },
+    addAssessment: a => sb.from('assessments').insert(a).select().single().then(chk),
+    updateAssessment: (id, a) => sb.from('assessments').update(a).eq('id', id).then(chk),
+    deleteAssessment: id => sb.from('assessments').delete().eq('id', id).then(chk),
+    anamneses: () => sb.from('anamnesis').select('*').then(chk),
+    saveAnamnesis: (sid, answers) => sb.from('anamnesis').upsert({ student_id: sid, answers, updated_at: new Date().toISOString() }, { onConflict: 'student_id' }).select().single().then(chk),
+    uploadPhoto: (path, blob) => sb.storage.from('fotos').upload(path, blob, { contentType: 'image/jpeg', upsert: false }).then(r => { if (r.error) throw r.error; return path; }),
+    photoUrls: async paths => {
+      const { data, error } = await sb.storage.from('fotos').createSignedUrls(paths, 3600);
+      if (error) throw error;
+      const m = {}; (data || []).forEach(d => { if (d.signedUrl) m[d.path] = d.signedUrl; }); return m;
+    },
+    deletePhotos: paths => paths.length ? sb.storage.from('fotos').remove(paths).then(r => { if (r.error) throw r.error; }) : Promise.resolve(),
     addTemplate: t => sb.from('templates').insert(t).select().single().then(chk),
     updateTemplate: (id, t) => sb.from('templates').update(t).eq('id', id).then(chk),
     deleteTemplate: id => sb.from('templates').delete().eq('id', id).then(chk),
@@ -311,7 +350,7 @@ const api = window.__TEST_API__ ||
 /* ===================== estado ===================== */
 const S = {
   user: null, role: null, trainer: null, me: null,
-  students: [], exercises: [], plans: [], logs: [], templates: [],
+  students: [], exercises: [], plans: [], logs: [], templates: [], assess: [], anam: {},
   view: { name: 'loading' }, offline: false
 };
 const exById = id => S.exercises.find(e => e.id === id);
@@ -342,7 +381,7 @@ async function boot() {
   flushPending();
 }
 function resetState() {
-  Object.assign(S, { user: null, role: null, trainer: null, me: null, students: [], exercises: [], plans: [], logs: [], templates: [], view: { name: 'loading' }, offline: false });
+  Object.assign(S, { user: null, role: null, trainer: null, me: null, students: [], exercises: [], plans: [], logs: [], templates: [], assess: [], anam: {}, view: { name: 'loading' }, offline: false });
 }
 async function enter(user) {
   S.user = user;
@@ -368,7 +407,7 @@ async function enter(user) {
     if (me) {
       S.role = 'student'; S.me = me;
       await loadStudent();
-      store.set(cacheKey, { me: S.me, plans: S.plans, exercises: S.exercises, logs: S.logs });
+      store.set(cacheKey, { me: S.me, plans: S.plans, exercises: S.exercises, logs: S.logs, assess: S.assess, anam: S.anam });
       return go({ name: 'treino' });
     }
     S.role = 'none';
@@ -384,10 +423,14 @@ async function enter(user) {
 }
 async function loadTrainer() {
   const since = new Date(Date.now() - 120 * 864e5).toISOString();
-  [S.students, S.exercises, S.plans, S.logs, S.templates] = await Promise.all([api.students(), api.exercises(), api.plans(), api.logs({ since }), api.templates()]);
+  let anams;
+  [S.students, S.exercises, S.plans, S.logs, S.templates, S.assess, anams] = await Promise.all([api.students(), api.exercises(), api.plans(), api.logs({ since }), api.templates(), api.assessments(), api.anamneses()]);
+  S.anam = Object.fromEntries(anams.map(a => [a.student_id, a]));
 }
 async function loadStudent() {
-  [S.plans, S.exercises, S.logs] = await Promise.all([api.plans(S.me.id), api.exercises(), api.logs({ studentId: S.me.id, limit: 200 })]);
+  let anams;
+  [S.plans, S.exercises, S.logs, S.assess, anams] = await Promise.all([api.plans(S.me.id), api.exercises(), api.logs({ studentId: S.me.id, limit: 200 }), api.assessments(S.me.id), api.anamneses()]);
+  S.anam = Object.fromEntries(anams.map(a => [a.student_id, a]));
 }
 
 function authShell(inner) {
@@ -465,7 +508,7 @@ function renderOnboarding(err) {
 
 /* ===================== render principal ===================== */
 function render() {
-  if (S.role === 'student') return renderStudentApp();
+  if (S.role === 'student') { renderStudentApp(); hydratePhotos(); return; }
   if (S.role !== 'trainer') return;
   const v = S.view;
   const s = v.sid && studentById(v.sid);
@@ -475,6 +518,7 @@ function render() {
   else if (v.name === 'student' && s) { title = s.name; back = { name: 'students' }; html = vStudent(s); }
   else if (v.name === 'plan' && s && p) { title = `${s.name} · ${p.name}`; back = { name: 'student', sid: s.id }; html = vPlan(s, p); }
   else if (v.name === 'templates') { title = 'Modelos de treino'; html = vTemplates(); }
+  else if (v.name === 'assess' && s) { title = `${s.name} · Avaliação`; back = { name: 'student', sid: s.id }; html = vAssess(s.id); }
   else if (v.name === 'template' && cur().p) { const t = cur().p; title = `Modelo · ${t.name}`; back = { name: 'templates' }; html = vPlan(null, t, true); }
   else if (v.name === 'feed') { title = 'Acompanhamento'; html = vFeed(); }
   else if (v.name === 'exercises') { title = 'Biblioteca de exercícios'; html = vExercises(); }
@@ -483,12 +527,13 @@ function render() {
   $('#top').innerHTML = `${back ? `<button data-act="back">‹ Voltar</button>` : ''}<h1>${esc(title)}</h1>${v.name === 'plan' || v.name === 'template' ? '<span class="saving" id="saving"></span>' : ''}`;
   $('#top')._back = back;
   $('#app').innerHTML = html;
-  const tab = ['students', 'student', 'plan'].includes(v.name) ? 'students' : v.name === 'template' ? 'templates' : v.name;
+  const tab = ['students', 'student', 'plan', 'assess'].includes(v.name) ? 'students' : v.name === 'template' ? 'templates' : v.name;
   const n = unseen().length;
   $('#tabs').hidden = false;
   $('#tabs').innerHTML = [['students', '👥', 'Alunos'], ['feed', '📈', 'Acompanhar'], ['templates', '📋', 'Modelos'], ['exercises', '🎬', 'Exercícios'], ['settings', '⚙️', 'Ajustes']]
     .map(([k, i, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-k="${k}"><span>${i}</span>${l}${k === 'feed' && n ? `<b class="badge">${n}</b>` : ''}</button>`).join('');
   if (v.name === 'student' && s) markSeen(logsOf(s.id));
+  hydratePhotos();
 }
 const empty = (t, d) => `<div class="empty"><b>${esc(t)}</b>${esc(d)}</div>`;
 
@@ -522,13 +567,8 @@ function loadSeries(logs) {
   }));
   return by;
 }
-function loadChart(logs, key) {
-  const by = loadSeries(logs);
-  const names = Object.keys(by).sort((a, b) => by[b].length - by[a].length || a.localeCompare(b, 'pt'));
-  const who = S.role === 'trainer' ? 'o aluno anotar' : 'você anotar';
-  if (!names.length) return `<div class="card chart"><h3>Evolução de carga</h3><p class="muted" style="margin:6px 0 0">Aparece aqui quando ${who} a carga usada ao finalizar os treinos.</p></div>`;
-  const sel = names.includes(chartSel[key]) ? chartSel[key] : names[0];
-  const P = by[sel].slice(-20);
+// Gráfico de linha (uma série). P = [{ t: data ISO, v: número, raw: texto exibido }], em ordem cronológica.
+function lineChart(P, aria, each = 'treino') {
   const W = 320, H = 150, L = 36, R = 12, T = 10, B = 22;
   const vs = P.map(p => p.v);
   let lo = Math.min(...vs), hi = Math.max(...vs);
@@ -540,16 +580,9 @@ function loadChart(logs, key) {
   const y = v => T + (hi - v) * (H - T - B) / (hi - lo);
   const ticks = []; for (let t = lo; t <= hi + 1e-9; t += tstep) ticks.push(t);
   const step = P.length > 1 ? (W - L - R) / (P.length - 1) : W - L - R;
-  const first = P[0], last = P[P.length - 1], diff = last.v - first.v;
-  const pct = first.v ? Math.round(diff / first.v * 100) : 0;
+  const first = P[0], last = P[P.length - 1];
   const tip = p => `${fmtShort(p.t)} · <b>${esc(p.raw)}</b>`;
-  return `<div class="card chart" data-chart="${esc(key)}">
-    <h3>Evolução de carga</h3>
-    <div class="chips">${names.map(n => `<button class="chip ${n === sel ? 'on' : ''}" data-act="chartEx" data-key="${esc(key)}" data-name="${esc(n)}">${esc(n)}</button>`).join('')}</div>
-    <p class="sum">${P.length > 1
-      ? `<b>${esc(first.raw)} → ${esc(last.raw)}</b> <span class="muted">(${diff >= 0 ? '+' : ''}${fmtNum(diff)}${pct ? `, ${pct > 0 ? '+' : ''}${pct}%` : ''} em ${P.length} treinos)</span>`
-      : `<b>${esc(first.raw)}</b> <span class="muted">— registre mais treinos para ver a evolução</span>`}</p>
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Carga em ${esc(sel)} ao longo do tempo">
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(aria)}">
       ${ticks.map(t => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text class="axis" x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${fmtNum(t)}</text>`).join('')}
       <text class="axis" x="${x(0)}" y="${H - 6}" text-anchor="${P.length === 1 ? 'middle' : 'start'}">${fmtShort(first.t)}</text>
       ${P.length > 1 ? `<text class="axis" x="${x(P.length - 1)}" y="${H - 6}" text-anchor="end">${fmtShort(last.t)}</text>` : ''}
@@ -557,8 +590,28 @@ function loadChart(logs, key) {
       ${P.map((p, i) => `<circle class="dot ${i === P.length - 1 ? 'on' : ''}" cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="4"/>`).join('')}
       ${P.map((p, i) => `<rect class="hit" data-tip="${esc(tip(p))}" data-i="${i}" x="${(x(i) - step / 2).toFixed(1)}" y="0" width="${step.toFixed(1)}" height="${H}"/>`).join('')}
     </svg>
-    <div class="tip">Último: ${tip(last)} <span class="muted">· toque nos pontos para ver cada treino</span></div>
-    <details><summary>Ver tabela</summary><table>${[...P].reverse().map(p => `<tr><td>${fmtShort(p.t)}</td><td>${esc(p.raw)}</td></tr>`).join('')}</table></details>
+    <div class="tip">Último: ${tip(last)} <span class="muted">· toque nos pontos para ver cada ${each}</span></div>
+    <details><summary>Ver tabela</summary><table>${[...P].reverse().map(p => `<tr><td>${fmtShort(p.t)}</td><td>${esc(p.raw)}</td></tr>`).join('')}</table></details>`;
+}
+function sumLine(P, unit = '', each = 'treinos') {
+  const first = P[0], last = P[P.length - 1], diff = last.v - first.v;
+  const pct = first.v ? Math.round(diff / first.v * 100) : 0;
+  return P.length > 1
+    ? `<b>${esc(first.raw)} → ${esc(last.raw)}</b> <span class="muted">(${diff >= 0 ? '+' : ''}${fmtNum(diff)}${unit}${pct ? `, ${pct > 0 ? '+' : ''}${pct}%` : ''} em ${P.length} ${each})</span>`
+    : `<b>${esc(first.raw)}</b> <span class="muted">— registre mais ${each} para ver a evolução</span>`;
+}
+function loadChart(logs, key) {
+  const by = loadSeries(logs);
+  const names = Object.keys(by).sort((a, b) => by[b].length - by[a].length || a.localeCompare(b, 'pt'));
+  const who = S.role === 'trainer' ? 'o aluno anotar' : 'você anotar';
+  if (!names.length) return `<div class="card chart"><h3>Evolução de carga</h3><p class="muted" style="margin:6px 0 0">Aparece aqui quando ${who} a carga usada ao finalizar os treinos.</p></div>`;
+  const sel = names.includes(chartSel[key]) ? chartSel[key] : names[0];
+  const P = by[sel].slice(-20);
+  return `<div class="card chart" data-chart="${esc(key)}">
+    <h3>Evolução de carga</h3>
+    <div class="chips">${names.map(n => `<button class="chip ${n === sel ? 'on' : ''}" data-act="chartEx" data-key="${esc(key)}" data-name="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+    <p class="sum">${sumLine(P)}</p>
+    ${lineChart(P, `Carga em ${sel} ao longo do tempo`)}
   </div>`;
 }
 function chartTip(el) {
@@ -577,7 +630,8 @@ function vStudents() {
       <div class="avatar">${esc(initials(s.name))}</div>
       <div class="grow"><b>${esc(s.name)}</b> ${nNew ? `<span class="badge">${nNew} novo${nNew > 1 ? 's' : ''}</span>` : ''}
         <small>${esc(s.goal || 'Sem objetivo definido')} · ${plansOf(s.id).length} treino(s)</small>${statusOf(s)}
-        ${(r => r ? ` <span class="st ${r.cls}">⚠️ Treino: ${r.txt.toLowerCase()}</span>` : '')(renewalOf(s))}</div>
+        ${(r => r ? ` <span class="st ${r.cls}">⚠️ Treino: ${r.txt.toLowerCase()}</span>` : '')(renewalOf(s))}
+        ${parqYes(S.anam[s.id]) ? ' <span class="st bad">⚠️ PAR-Q</span>' : ''}</div>
       <span class="chev">›</span></button>`;
   }).join('');
   return `<div class="toolbar"><h2>Alunos</h2><button class="btn primary" data-act="newStudent">+ Novo aluno</button></div>
@@ -645,6 +699,8 @@ function vStudent(s) {
         </div></div>` : ''}
     <div class="toolbar"><h2>Treinos</h2><button class="btn" data-act="newPlan">+ Novo treino</button></div>
     ${plans || empty('Nenhum treino', 'Crie o Treino A, B, C… e adicione os exercícios.')}
+    <div class="toolbar"><h2>Avaliação física</h2><button class="btn" data-act="openAssess">Abrir avaliações</button></div>
+    <button class="card" data-act="openAssess" style="cursor:pointer">${assessSummary(s.id)}<div style="margin-top:8px">${parqChip(s.id)}</div></button>
     <div class="toolbar"><h2>Acompanhamento</h2></div>
     ${statsHtml(logs)}
     ${loadChart(logs, s.id)}
@@ -808,6 +864,234 @@ function queuePlanSave(p) {
 function flushPlanSave() { if (planSaveT) { clearTimeout(planSaveT); planSaveFn(); } }
 window.addEventListener('pagehide', flushPlanSave);
 
+/* ---------- avaliação física ---------- */
+const MEASURES = [['cintura', 'Cintura'], ['abdomen', 'Abdômen'], ['quadril', 'Quadril'], ['peito', 'Peitoral'],
+  ['braco_d', 'Braço D'], ['braco_e', 'Braço E'], ['coxa_d', 'Coxa D'], ['coxa_e', 'Coxa E'], ['pant_d', 'Panturrilha D'], ['pant_e', 'Panturrilha E']];
+const POSES = [['frente', 'Frente'], ['lado', 'Lado'], ['costas', 'Costas']];
+const PARQ = [
+  ['q1', 'Algum médico já disse que você possui algum problema de coração e que só deveria realizar atividade física supervisionada por profissionais de saúde?'],
+  ['q2', 'Você sente dores no peito quando pratica atividade física?'],
+  ['q3', 'No último mês, você sentiu dores no peito quando praticou atividade física?'],
+  ['q4', 'Você apresenta desequilíbrio devido à tontura e/ou perda de consciência?'],
+  ['q5', 'Você possui algum problema ósseo ou articular que poderia ser piorado pela atividade física?'],
+  ['q6', 'Você toma atualmente algum medicamento para pressão arterial e/ou problema de coração?'],
+  ['q7', 'Sabe de alguma outra razão pela qual você não deve praticar atividade física?']
+];
+const ANAM_FIELDS = [['lesoes', 'Lesões, dores ou cirurgias'], ['condicoes', 'Doenças ou condições de saúde (ex.: hipertensão, diabetes, asma)'],
+  ['medicamentos', 'Medicamentos de uso contínuo'], ['atividade', 'Pratica atividade física hoje? Qual e quantas vezes por semana?'],
+  ['disponibilidade', 'Dias e horários disponíveis para treinar'], ['obs', 'Algo mais que seu personal deve saber?']];
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+const assessOf = sid => S.assess.filter(a => a.student_id === sid).sort((a, b) => b.taken_on.localeCompare(a.taken_on) || String(b.created_at).localeCompare(String(a.created_at)));
+const num = v => { const t = String(v ?? '').trim().replace(',', '.'); if (!t) return null; const n = parseFloat(t); return isNaN(n) ? null : n; };
+const kg = v => v == null ? '–' : fmtNum(v) + ' kg';
+const fmtDelta = (d, unit = '') => d == null || Math.abs(d) < 0.05 ? '' : `${d > 0 ? '+' : ''}${fmtNum(d)}${unit}`;
+function heightOf(a, sid) { return num(a.height) || (assessOf(sid).find(x => num(x.height)) || {}).height || null; }
+function bmi(a, sid) { const w = num(a.weight), h = num(heightOf(a, sid)); return w && h ? w / Math.pow(h / 100, 2) : null; }
+const bmiClass = v => v == null ? '' : v < 18.5 ? 'abaixo do peso' : v < 25 ? 'peso adequado' : v < 30 ? 'sobrepeso' : 'obesidade';
+function comp(a) { const w = num(a.weight), f = num(a.body_fat); return w && f != null ? { fat: w * f / 100, lean: w * (1 - f / 100) } : null; }
+const parqYes = an => an ? PARQ.filter(([k]) => an.answers && an.answers[k] === 'sim').length : 0;
+function parqChip(sid) {
+  const an = S.anam[sid];
+  if (!an) return `<span class="st">📋 Anamnese pendente</span>`;
+  const y = parqYes(an);
+  return y ? `<span class="st bad">⚠️ PAR-Q: ${y} “sim” — recomendar liberação médica</span>`
+           : `<span class="st ok">✅ Anamnese respondida em ${fmtDay(an.updated_at.slice(0, 10))}</span>`;
+}
+function metricSeries(list, sid) {
+  const chrono = [...list].reverse(), out = {};
+  const add = (k, label, unit, val) => chrono.forEach(a => { const v = val(a); if (v != null) (out[k] ||= { label, unit, P: [] }).P.push({ t: a.taken_on + 'T12:00:00', v, raw: `${fmtNum(v)}${unit}` }); });
+  add('weight', 'Peso', ' kg', a => num(a.weight));
+  add('body_fat', '% gordura', '%', a => num(a.body_fat));
+  add('lean', 'Massa magra', ' kg', a => { const c = comp(a); return c ? c.lean : null; });
+  add('bmi', 'IMC', '', a => bmi(a, sid));
+  MEASURES.forEach(([k, l]) => add(k, l, ' cm', a => num((a.measures || {})[k])));
+  return out;
+}
+function assessSummary(sid) {
+  const list = assessOf(sid), a = list[0], prev = list[1];
+  const tile = (label, val, unit, prevVal) => `<div class="stat"><b>${val == null ? '–' : fmtNum(val)}</b><small>${label}${unit}</small>${prevVal != null && val != null ? `<span class="delta">${fmtDelta(val - prevVal) || 'igual'}</span>` : ''}</div>`;
+  if (!a) return `<p class="muted" style="margin:0">Nenhuma avaliação ainda.</p>`;
+  const b = bmi(a, sid), c = comp(a);
+  return `<small>Última: ${fmtDay(a.taken_on)}${prev ? ` · comparação com ${fmtDay(prev.taken_on)}` : ''}</small>
+    <div class="stats" style="margin:8px 0 0">
+      ${tile('peso', num(a.weight), ' (kg)', prev && num(prev.weight))}
+      ${tile('gordura', num(a.body_fat), ' (%)', prev && num(prev.body_fat))}
+      ${tile('IMC', b == null ? null : Math.round(b * 10) / 10, '', prev && bmi(prev, sid) != null ? Math.round(bmi(prev, sid) * 10) / 10 : null)}
+    </div>
+    ${b ? `<small style="margin-top:6px">IMC: ${bmiClass(b)}${c ? ` · massa magra ${kg(c.lean)} · massa gorda ${kg(c.fat)}` : ''}</small>` : ''}`;
+}
+function photoImg(path, cls = '') { return `<img class="${cls}" data-photo="${esc(path)}" src="${BLANK}" alt="Foto de avaliação" data-act="viewPhoto">`; }
+function photoCompare(list, sid) {
+  const withP = list.filter(a => (a.photos || []).length);
+  if (!withP.length) return '';
+  const pos = chartSel['pos-' + sid] || 'frente';
+  const after = withP[0], before = withP.length > 1 ? withP[withP.length - 1] : null;
+  const fig = a => { const ph = (a.photos || []).find(p => p.pos === pos);
+    return `<figure>${ph ? photoImg(ph.path) : `<div class="nophoto">Sem foto de ${pos}</div>`}<figcaption>${fmtDay(a.taken_on)}</figcaption></figure>`; };
+  return `<div class="card"><h3>Fotos de evolução</h3>
+    <div class="chips" style="margin:8px 0 0">${POSES.map(([k, l]) => `<button class="chip ${pos === k ? 'on' : ''}" data-act="photoPos" data-sid="${sid}" data-k="${k}">${l}</button>`).join('')}</div>
+    <div class="cmp">${before ? fig(before) + fig(after) : fig(after)}</div>
+    ${before ? `<small style="margin-top:6px">Primeira × última avaliação com fotos.</small>` : ''}
+  </div>`;
+}
+function metricChart(list, sid) {
+  const series = metricSeries(list, sid), keys = Object.keys(series);
+  if (!keys.length) return '';
+  const sel = keys.includes(chartSel['m-' + sid]) ? chartSel['m-' + sid] : keys[0], m = series[sel];
+  return `<div class="card chart"><h3>Evolução</h3>
+    <div class="chips">${keys.map(k => `<button class="chip ${k === sel ? 'on' : ''}" data-act="metricSel" data-sid="${sid}" data-k="${k}">${esc(series[k].label)}</button>`).join('')}</div>
+    <p class="sum">${sumLine(m.P, m.unit, 'avaliações')}</p>
+    ${lineChart(m.P, `${m.label} ao longo do tempo`, 'avaliação')}
+  </div>`;
+}
+function assessCard(a, sid, editable) {
+  const b = bmi(a, sid), ms = MEASURES.filter(([k]) => num((a.measures || {})[k]) != null);
+  const parts = [num(a.weight) != null ? `${fmtNum(num(a.weight))} kg` : '', num(a.body_fat) != null ? `${fmtNum(num(a.body_fat))}% gordura` : '', b ? `IMC ${fmtNum(b)}` : ''].filter(Boolean);
+  return `<div class="card">
+    <div class="row"><div class="grow"><b>Avaliação de ${fmtDay(a.taken_on)}</b><small>${parts.join(' · ') || 'Sem medidas principais'}</small></div>
+      ${editable ? `<button class="icon" data-act="editAssess" data-id="${a.id}" aria-label="Editar avaliação">✎</button>` : ''}</div>
+    ${ms.length ? `<details><summary>Circunferências (${ms.length})</summary><table>${ms.map(([k, l]) => `<tr><td>${l}</td><td>${fmtNum(num(a.measures[k]))} cm</td></tr>`).join('')}</table></details>` : ''}
+    ${(a.photos || []).length ? `<div class="thumbs">${POSES.map(([k]) => { const ph = a.photos.find(p => p.pos === k); return ph ? photoImg(ph.path) : ''; }).join('')}</div>` : ''}
+    ${a.notes ? `<p class="quote">${esc(a.notes)}</p>` : ''}
+  </div>`;
+}
+function anamCard(sid, mine) {
+  const an = S.anam[sid], y = parqYes(an);
+  if (!an) return `<div class="card"><h3>📋 Anamnese e PAR-Q</h3>
+    <p class="muted" style="margin:6px 0 10px">${mine ? 'Responda o questionário de saúde (2 minutos). Seu personal usa essas informações para montar um treino seguro.' : 'O aluno ainda não respondeu. Ele vê um aviso no app — ou você pode preencher junto com ele.'}</p>
+    <button class="btn ${mine ? 'primary' : ''} block" data-act="anamForm" data-sid="${sid}">${mine ? 'Responder agora' : 'Preencher anamnese'}</button></div>`;
+  const a = an.answers || {};
+  return `<div class="card"><h3>📋 Anamnese e PAR-Q</h3>${parqChip(sid)}
+    ${y ? `<div class="msg err" style="margin-top:10px">${mine ? 'Você respondeu “sim” em alguma pergunta do PAR-Q. Recomendamos uma avaliação médica antes de aumentar a intensidade dos treinos.' : 'Respondeu “sim” no PAR-Q. Recomende uma liberação médica antes de intensificar o treino.'}</div>` : ''}
+    <details><summary>Ver respostas</summary><table class="answers">
+      ${PARQ.map(([k, t], i) => `<tr><td>PAR-Q ${i + 1}</td><td>${a[k] === 'sim' ? '<b>Sim</b> — ' : 'Não — '}${esc(t)}</td></tr>`).join('')}
+      ${ANAM_FIELDS.filter(([k]) => a[k]).map(([k, l]) => `<tr><td>${esc(l)}</td><td>${esc(a[k])}</td></tr>`).join('')}
+    </table></details>
+    <button class="link" data-act="anamForm" data-sid="${sid}">✎ Editar respostas</button></div>`;
+}
+function vAssess(sid, mine = false) {
+  const list = assessOf(sid);
+  return `${anamCard(sid, mine)}
+    <div class="toolbar"><h2>Avaliação física</h2>${mine ? '' : `<button class="btn primary" data-act="newAssess" data-sid="${sid}">+ Nova avaliação</button>`}</div>
+    ${list.length ? `<div class="card">${assessSummary(sid)}</div>` : empty('Nenhuma avaliação ainda', mine ? 'Seu personal registra aqui seu peso, medidas e fotos de evolução.' : 'Registre peso, % de gordura, circunferências e fotos para acompanhar a evolução.')}
+    ${metricChart(list, sid)}
+    ${photoCompare(list, sid)}
+    ${list.length ? `<div class="toolbar"><h2>Histórico</h2></div>${list.map(a => assessCard(a, sid, !mine)).join('')}` : ''}`;
+}
+// Fotos privadas: o app pede links temporários (1 h) só para as fotos que aparecem na tela.
+const photoCache = {};
+async function hydratePhotos() {
+  const imgs = [...document.querySelectorAll('img[data-photo]')];
+  if (!imgs.length) return;
+  const need = [...new Set(imgs.map(i => i.dataset.photo))].filter(p => !photoCache[p] || photoCache[p].exp < Date.now());
+  if (need.length) {
+    try { const m = await api.photoUrls(need); need.forEach(p => { if (m[p]) photoCache[p] = { url: m[p], exp: Date.now() + 50 * 60e3 }; }); } catch {}
+  }
+  document.querySelectorAll('img[data-photo]').forEach(i => { const c = photoCache[i.dataset.photo]; if (c && i.src !== c.url) i.src = c.url; });
+}
+async function compressImage(file, max = 1280) {
+  let img;
+  try { img = await createImageBitmap(file); }
+  catch { img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); }); }
+  const sc = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', 0.82));
+}
+function assessDialog(sid, a) {
+  const st = studentById(sid), isNew = !a;
+  a ||= { taken_on: localDay(), height: heightOf({}, sid), measures: {}, photos: [] };
+  const v = x => x == null ? '' : String(x).replace('.', ',');
+  const picked = {};
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<form class="dlg" id="asForm"><h3>${isNew ? 'Nova avaliação' : 'Editar avaliação'} · ${esc(st.name.split(' ')[0])}</h3>
+    <label>Data da avaliação</label><input type="date" name="taken_on" value="${esc(a.taken_on)}" required>
+    <div class="grid3">
+      <div><label>Peso (kg)</label><input name="weight" inputmode="decimal" value="${v(a.weight)}" placeholder="70,5"></div>
+      <div><label>Altura (cm)</label><input name="height" inputmode="decimal" value="${v(a.height)}" placeholder="170"></div>
+      <div><label>% gordura</label><input name="body_fat" inputmode="decimal" value="${v(a.body_fat)}" placeholder="22"></div>
+    </div>
+    <div class="calc" id="asCalc"></div>
+    <div class="group-title">Circunferências (cm)</div>
+    <div class="mgrid">${MEASURES.map(([k, l]) => `<div><label>${l}</label><input name="m_${k}" inputmode="decimal" value="${v((a.measures || {})[k])}"></div>`).join('')}</div>
+    <div class="group-title">Fotos de evolução</div>
+    <div class="photos3">${POSES.map(([k, l]) => { const ph = (a.photos || []).find(p => p.pos === k);
+      return `<label class="photoslot ${ph ? '' : 'empty'}" id="slot_${k}">${ph ? `<img data-photo="${esc(ph.path)}" src="${BLANK}" alt="">` : ''}<span>${ph ? l : `📷<br>${l}`}</span><input type="file" accept="image/*" name="ph_${k}" hidden></label>`; }).join('')}</div>
+    <small style="margin-top:6px">As fotos ficam privadas: só você e o aluno veem.</small>
+    <label>Observações</label><textarea name="notes" placeholder="Ex.: avaliação por bioimpedância, em jejum">${esc(a.notes || '')}</textarea>
+    <div class="actions">${isNew ? '' : `<button type="button" class="btn danger" data-act="delAssess" data-id="${a.id}" style="margin-right:auto">Excluir</button>`}
+      <button type="button" class="btn" data-act="closeDlg">Cancelar</button><button class="btn primary">Salvar</button></div></form>`;
+  const form = $('#asForm');
+  const calc = () => {
+    const w = num(form.weight.value), h = num(form.height.value), f = num(form.body_fat.value);
+    const b = w && h ? w / Math.pow(h / 100, 2) : null;
+    $('#asCalc').textContent = [b ? `IMC ${fmtNum(b)} (${bmiClass(b)})` : '', w && f != null ? `massa magra ${kg(w * (1 - f / 100))} · massa gorda ${kg(w * f / 100)}` : ''].filter(Boolean).join(' · ');
+  };
+  form.addEventListener('input', calc); calc();
+  POSES.forEach(([k, l]) => form[`ph_${k}`].addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    picked[k] = f;
+    const slot = $('#slot_' + k); slot.classList.remove('empty');
+    slot.querySelectorAll('img').forEach(i => i.remove());
+    const img = document.createElement('img'); img.src = URL.createObjectURL(f); slot.prepend(img);
+    slot.querySelector('span').textContent = l;
+  }));
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const btn = form.querySelector('button.primary'); btn.disabled = true;
+    const measures = {}; MEASURES.forEach(([k]) => { const n = num(form['m_' + k].value); if (n != null) measures[k] = n; });
+    const data = { taken_on: form.taken_on.value, weight: num(form.weight.value), height: num(form.height.value), body_fat: num(form.body_fat.value), measures, notes: form.notes.value.trim() };
+    try {
+      let row = a;
+      if (isNew) { row = await api.addAssessment({ student_id: sid, ...data, photos: [] }); S.assess.push(row); }
+      else { await api.updateAssessment(a.id, data); Object.assign(a, data); }
+      const keys = Object.keys(picked);
+      if (keys.length) {
+        btn.textContent = 'Enviando fotos…';
+        const photos = [...(row.photos || [])], old = [];
+        for (const k of keys) {
+          const path = `${S.user.id}/${sid}/${row.id}-${k}-${Date.now()}.jpg`;
+          await api.uploadPhoto(path, await compressImage(picked[k]));
+          const i = photos.findIndex(p => p.pos === k);
+          if (i >= 0) { old.push(photos[i].path); photos[i] = { pos: k, path }; } else photos.push({ pos: k, path });
+        }
+        await api.updateAssessment(row.id, { photos }); row.photos = photos;
+        if (old.length) api.deletePhotos(old).catch(() => {});
+      }
+      dlg.close(); render(); toast('Avaliação salva ✓');
+    } catch (er) { toast('Erro: ' + ptError(er)); btn.disabled = false; btn.textContent = 'Salvar'; }
+  };
+  dlg.showModal();
+  hydratePhotos();
+}
+function anamDialog(sid) {
+  const mine = S.role === 'student', an = S.anam[sid], a = (an && an.answers) || {};
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<form class="dlg" id="anForm"><h3>Questionário de saúde</h3>
+    <p class="muted" style="margin:6px 0 0">${mine ? 'Responda com sinceridade. Só você e seu personal veem as respostas.' : 'Preencha junto com o aluno.'}</p>
+    <div class="group-title">PAR-Q — prontidão para atividade física</div>
+    ${PARQ.map(([k, t], i) => `<div class="q"><p>${i + 1}. ${esc(t)}</p><div class="yn">
+      <label><input type="radio" name="${k}" value="nao" required ${a[k] === 'nao' ? 'checked' : ''}> Não</label>
+      <label><input type="radio" name="${k}" value="sim" ${a[k] === 'sim' ? 'checked' : ''}> Sim</label></div></div>`).join('')}
+    <div class="group-title">Sobre ${mine ? 'você' : 'o aluno'}</div>
+    ${ANAM_FIELDS.map(([k, l]) => `<label>${esc(l)}</label><textarea name="${k}" style="min-height:54px">${esc(a[k] || '')}</textarea>`).join('')}
+    <div class="actions"><button type="button" class="btn" data-act="closeDlg">Cancelar</button><button class="btn primary">Salvar</button></div></form>`;
+  $('#anForm').onsubmit = async e => {
+    e.preventDefault();
+    const f = e.target, btn = f.querySelector('button.primary'); btn.disabled = true;
+    const answers = {};
+    PARQ.forEach(([k]) => answers[k] = f[k].value);
+    ANAM_FIELDS.forEach(([k]) => { const t = f[k].value.trim(); if (t) answers[k] = t; });
+    try {
+      S.anam[sid] = await api.saveAnamnesis(sid, answers);
+      if (mine) store.set('mp_cache_' + S.user.id, { me: S.me, plans: S.plans, exercises: S.exercises, logs: S.logs, assess: S.assess, anam: S.anam });
+      dlg.close(); render();
+      toast(parqYes(S.anam[sid]) ? 'Salvo. Atenção: recomendamos avaliação médica ⚠️' : 'Questionário salvo ✓');
+    } catch (er) { toast('Erro: ' + ptError(er)); btn.disabled = false; }
+  };
+  dlg.showModal();
+}
+
 /* ---------- personal: acompanhamento geral ---------- */
 function vFeed() {
   const nw = unseen();
@@ -897,15 +1181,16 @@ function lastLoad(plan, exName) {
   return '';
 }
 let curPlan = 0;
+const anamPrompt = () => S.anam[S.me.id] ? '' : `<button class="card row" data-act="anamForm" data-sid="${S.me.id}"><span style="font-size:22px">📋</span><div class="grow"><b>Responda o questionário de saúde</b><small>2 minutos · ajuda seu personal a montar um treino seguro</small></div><span class="chev">›</span></button>`;
 const replySeenAt = () => (S.user ? store.get('mp_reply_seen_' + S.user.id, '') : '');
 const newReplies = () => S.logs.filter(l => l.replied_at && l.trainer_reply && l.replied_at > replySeenAt());
 function renderStudentApp() {
   const v = S.view.name;
   $('#tabs').hidden = false;
-  $('#tabs').innerHTML = [['treino', '🏋️', 'Treino'], ['historico', '📅', 'Histórico'], ['conta', '👤', 'Conta']]
+  $('#tabs').innerHTML = [['treino', '🏋️', 'Treino'], ['avaliacao', '📏', 'Avaliação'], ['historico', '📅', 'Histórico'], ['conta', '👤', 'Conta']]
     .map(([k, i, l]) => { const n = k === 'historico' && v !== 'historico' ? newReplies().length : 0;
       return `<button class="${v === k ? 'on' : ''}" data-act="tab" data-k="${k}"><span>${i}</span>${l}${n ? `<b class="badge">${n}</b>` : ''}</button>`; }).join('');
-  $('#top').innerHTML = `<h1>${v === 'historico' ? 'Meu histórico' : v === 'conta' ? 'Minha conta' : 'Meu treino'}</h1>`;
+  $('#top').innerHTML = `<h1>${v === 'historico' ? 'Meu histórico' : v === 'conta' ? 'Minha conta' : v === 'avaliacao' ? 'Minha avaliação' : 'Meu treino'}</h1>`;
   const off = S.offline ? `<div class="offline">Sem internet — mostrando o último treino salvo</div>` : '';
   const pend = store.get('mp_pending_' + S.user.id, []).length;
   const pendHtml = pend ? `<div class="offline">${pend} treino(s) aguardando internet para enviar ao personal</div>` : '';
@@ -915,6 +1200,7 @@ function renderStudentApp() {
     if (latest && latest > replySeenAt()) store.set('mp_reply_seen_' + S.user.id, latest);
     return;
   }
+  if (v === 'avaliacao') { $('#app').innerHTML = off + vAssess(S.me.id, true); return; }
   if (v === 'conta') {
     $('#app').innerHTML = `<div class="card"><div class="row"><div class="avatar">${esc(initials(S.me.name))}</div>
       <div class="grow"><h3>${esc(S.me.name)}</h3><small>${esc(S.user.email)}</small></div></div>
@@ -926,6 +1212,7 @@ function renderStudentApp() {
   const plans = S.plans;
   if (!plans.length) {
     $('#app').innerHTML = off + `<div class="hello"><h2>Olá, ${esc(S.me.name.split(' ')[0])}! 👋</h2><small>Sua conta está ligada a ${esc(S.me.trainer_name || 'seu personal')}.</small></div>
+      ${anamPrompt()}
       ${empty('Seu treino ainda não está pronto', 'Assim que seu personal montar, ele aparece aqui.')}<button class="btn block" data-act="reload">🔄 Atualizar</button>`;
     return;
   }
@@ -970,6 +1257,7 @@ function renderStudentApp() {
       <small>Treino montado por ${esc(S.me.trainer_name || 'seu personal')}${S.me.goal ? ' · ' + esc(S.me.goal) : ''}</small>
       ${last ? `<small style="margin-top:6px">Último treino: ${esc(last.plan_name)} ${agoText(last.done_at)}</small>` : ''}
     </div>
+    ${anamPrompt()}
     ${newReplies().length ? `<button class="card row" data-act="tab" data-k="historico"><span style="font-size:22px">💬</span><div class="grow"><b>${esc(S.me.trainer_name || 'Seu personal')} respondeu seu treino</b><small>Toque para ver no histórico</small></div><span class="chev">›</span></button>` : ''}
     ${plans.length > 1 ? `<div class="chips">${plans.map((p, k) => `<button class="chip ${k === curPlan ? 'on' : ''}" data-act="curPlan" data-k="${k}">${esc(p.name)}</button>`).join('')}</div>` : ''}
     ${P.focus ? `<p class="muted" style="margin:0 0 6px">${esc(P.focus)}</p>` : ''}
@@ -1045,7 +1333,7 @@ async function saveLog(log) {
     store.set(k, [...store.get(k, []), log]);
     toast('Sem internet: o treino será enviado quando a conexão voltar.');
   }
-  store.set('mp_cache_' + S.user.id, { me: S.me, plans: S.plans, exercises: S.exercises, logs: S.logs });
+  store.set('mp_cache_' + S.user.id, { me: S.me, plans: S.plans, exercises: S.exercises, logs: S.logs, assess: S.assess, anam: S.anam });
   render(); window.scrollTo(0, 0);
 }
 async function flushPending() {
@@ -1069,7 +1357,9 @@ async function refreshTrainer() {
   lastRefresh = Date.now();
   try {
     const since = new Date(Date.now() - 120 * 864e5).toISOString();
-    [S.students, S.logs] = await Promise.all([api.students(), api.logs({ since })]);
+    let anams;
+    [S.students, S.logs, anams] = await Promise.all([api.students(), api.logs({ since }), api.anamneses()]);
+    S.anam = Object.fromEntries(anams.map(a => [a.student_id, a]));
     if (!['plan', 'template'].includes(S.view.name) && !$('#dlg').open) render();
   } catch {}
 }
@@ -1300,6 +1590,26 @@ const actions = {
     render(); queuePlanSave(p);
   },
   toggleLink: el => { const { p } = cur(), it = p.items[+el.dataset.i]; it.link = !it.link; render(); queuePlanSave(p); toast(it.link ? 'Juntado: feitos em sequência, sem descanso entre eles' : 'Exercício separado'); },
+  // avaliação física
+  openAssess: () => go({ name: 'assess', sid: S.view.sid }),
+  newAssess: el => assessDialog(el.dataset.sid),
+  editAssess: el => { const a = S.assess.find(x => x.id === el.dataset.id); assessDialog(a.student_id, a); },
+  delAssess: async el => {
+    const a = S.assess.find(x => x.id === el.dataset.id);
+    if (!confirm(`Excluir a avaliação de ${fmtDay(a.taken_on)} e as fotos dela?`)) return;
+    await api.deleteAssessment(a.id);
+    api.deletePhotos((a.photos || []).map(p => p.path)).catch(() => {});
+    S.assess = S.assess.filter(x => x !== a); $('#dlg').close(); render(); toast('Avaliação excluída');
+  },
+  anamForm: el => anamDialog(el.dataset.sid),
+  metricSel: el => { chartSel['m-' + el.dataset.sid] = el.dataset.k; render(); },
+  photoPos: el => { chartSel['pos-' + el.dataset.sid] = el.dataset.k; render(); },
+  viewPhoto: el => {
+    if (el.closest('dialog')) return;
+    const dlg = $('#dlg');
+    dlg.innerHTML = `<div class="dlg"><img class="bigphoto" src="${esc(el.src)}" alt="Foto de avaliação"><div class="actions"><button class="btn primary" data-act="closeDlg">Fechar</button></div></div>`;
+    dlg.showModal();
+  },
   // modelos
   newTemplate: () => formDialog('Novo modelo de treino', [{ k: 'name', label: 'Nome do modelo', req: true, ph: 'Ex.: Hipertrofia iniciante A' }, { k: 'focus', label: 'Foco / descrição', ph: 'Ex.: Inferiores + core' }], {}, async d => {
     const t = await api.addTemplate({ ...d, items: [] }); S.templates.push(t); $('#dlg').close(); go({ name: 'template', tid: t.id });
