@@ -3,7 +3,7 @@
 self.window = self;
 try { importScripts('marca.js'); } catch (e) { /* sem marca: usa os padrões */ }
 const MARCA = self.MARCA || {};
-const CACHE = 'meu-personal-v7';
+const CACHE = 'meu-personal-v8';
 const ASSETS = ['./', './index.html', './marca.js', './config.js', './manifest.json', './icon-192.png', './badge-96.png', './vendor/qrcode.js'].concat([MARCA.logo, MARCA.logoEscuro].filter(Boolean).map(f => './' + f));
 const CDN = 'https://cdn.jsdelivr.net';
 self.addEventListener('install', e => {
@@ -18,12 +18,14 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   // Só o próprio app e a biblioteca do Supabase vão para o cache — nunca os dados da API.
   if (e.request.method !== 'GET' || (url.origin !== location.origin && url.origin !== CDN)) return;
-  e.respondWith(
-    fetch(e.request).then(r => {
-      if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
-      return r;
-    }).catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('./index.html')))
-  );
+  // Abre na hora com a cópia guardada (bom para sinal fraco na academia) e atualiza em segundo plano;
+  // a versão nova aparece na próxima abertura. Sem cópia guardada, usa a rede.
+  e.respondWith(caches.open(CACHE).then(async cache => {
+    const cached = await cache.match(e.request, { ignoreSearch: url.origin === location.origin });
+    const fresh = fetch(e.request).then(r => { if (r.ok) cache.put(e.request, r.clone()); return r; });
+    if (cached) { e.waitUntil(fresh.catch(() => {})); return cached; }
+    try { return await fresh; } catch { return (await cache.match('./index.html')) || Response.error(); }
+  }));
 });
 
 // ---- Notificações ----

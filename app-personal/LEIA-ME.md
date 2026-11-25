@@ -98,8 +98,8 @@ basta autorizar o e-mail de cada um na tabela `trainer_allowlist`.
    ```
 
 > **Já tinha rodado o `schema.sql` antes?** Rode também as atualizações que faltam, em ordem:
-> `supabase/migracao-v2.sql` até a `migracao-v7.sql` (ou rode o `schema.sql` inteiro de novo, que não apaga nada).
-> A v4 cria a pasta privada **fotos** no Storage do Supabase; a v6 adiciona periodização e dobras cutâneas; a v7, ferramentas por aluno, financeiro e agenda.
+> `supabase/migracao-v2.sql` até a `migracao-v8.sql` (ou rode o `schema.sql` inteiro de novo, que não apaga nada).
+> A v4 cria a pasta privada **fotos** no Storage do Supabase; a v6 adiciona periodização e dobras cutâneas; a v7, ferramentas por aluno, financeiro e agenda; a v8 deixa o banco rápido com muitos alunos (índices e regras de acesso otimizadas).
 
 ### 2. Ligar o app ao Supabase
 1. No Supabase, abra **Project Settings → API** (ou o botão **Connect**).
@@ -146,6 +146,16 @@ O app funciona sem isso. Para ativar os avisos e lembretes:
 
 Para instalar como app: no iPhone, Safari → Compartilhar → **Adicionar à Tela de Início**.
 No Android, Chrome → ⋮ → **Instalar app**.
+
+## Desempenho e uso sem internet (testado)
+- Banco testado com 200 alunos e 50 mil treinos registrados: todas as telas abrem em menos de 0,12 s.
+- O app busca os dados em páginas, então nada some quando a conta passa de 1.000 registros.
+- O painel carrega os últimos 60 dias. A ficha do aluno busca o histórico completo dele quando você abre.
+- Sem internet, o treino do aluno fica guardado no celular. Ele é enviado uma vez só quando a conexão volta, sem duplicar.
+- Alterações no treino que não salvaram (sem sinal) são tentadas de novo sozinhas. O app avisa antes de fechar com algo não salvo.
+- Toque duplo em botões não cria aluno, cobrança ou registro repetido.
+- Fotos de 12 MP são reduzidas para cerca de 1280 px antes do envio (~0,5 MB).
+- Lembretes diários: 5.000 alunos processados em segundos, com envio em paralelo.
 
 ## Segurança
 - Cada personal só vê os próprios alunos, exercícios e registros.

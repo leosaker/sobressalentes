@@ -434,6 +434,19 @@ function sessChip(x) {
 }
 
 /* ===================== acesso ao Supabase ===================== */
+// O Supabase devolve no máximo 1.000 linhas por consulta: busca em lotes até acabar.
+async function allRows(build, page = 1000, max = 100000) {
+  const out = [];
+  for (let from = 0; from < max; from += page) {
+    const { data, error } = await build().range(from, from + page - 1);
+    if (error) throw error;
+    out.push(...(data || []));
+    if (!data || data.length < page) break;
+  }
+  return out;
+}
+// Registro "leve" (sem o detalhe dos exercícios) para a visão geral do personal.
+const LOG_LIGHT = 'id,student_id,plan_id,plan_name,done_at,duration_min,effort,comment,trainer_seen,trainer_reply,replied_at';
 function makeApi(sb) {
   const chk = ({ data, error }) => { if (error) throw error; return data; };
   const authChk = r => { if (r.error) throw r.error; return r.data; };
@@ -450,12 +463,13 @@ function makeApi(sb) {
     createTrainer: name => sb.from('trainers').insert({ name }).select().single().then(chk),
     updateTrainer: (id, name) => sb.from('trainers').update({ name }).eq('id', id).then(chk),
     updateTrainerData: (id, d) => sb.from('trainers').update(d).eq('id', id).then(chk),
-    charges: () => sb.from('charges').select('*').order('due_date', { ascending: false }).then(chk),
+    // cobranças dos últimos ~13 meses + qualquer uma ainda em aberto
+    charges: () => { const d = localDay(Date.now() - 400 * 864e5); return allRows(() => sb.from('charges').select('*').or(`due_date.gte.${d},status.in.(aberta,informada)`).order('due_date', { ascending: false }).order('id')); },
     addCharges: list => sb.from('charges').insert(list).select().then(chk),
     updateCharge: (id, c) => sb.from('charges').update(c).eq('id', id).then(chk),
     deleteCharge: id => sb.from('charges').delete().eq('id', id).then(chk),
     informPayment: id => sb.rpc('inform_payment', { p_charge: id }).then(chk),
-    sessions: since => sb.from('sessions').select('*').gte('starts_at', since).order('starts_at').then(chk),
+    sessions: since => allRows(() => sb.from('sessions').select('*').gte('starts_at', since).order('starts_at').order('id')),
     addSessions: list => sb.from('sessions').insert(list).select().then(chk),
     updateSession: (id, x) => sb.from('sessions').update(x).eq('id', id).then(chk),
     deleteSession: id => sb.from('sessions').delete().eq('id', id).then(chk),
@@ -463,25 +477,25 @@ function makeApi(sb) {
     myStudent: () => sb.rpc('my_student').then(chk).then(r => (r && r[0]) || null),
     claimInvite: code => sb.rpc('claim_invite', { code }).then(chk),
 
-    students: () => sb.from('students').select('*').order('name').then(chk),
+    students: () => allRows(() => sb.from('students').select('*').order('name').order('id')),
     addStudent: s => sb.from('students').insert(s).select().single().then(chk),
     updateStudent: (id, s) => sb.from('students').update(s).eq('id', id).then(chk),
     deleteStudent: id => sb.from('students').delete().eq('id', id).then(chk),
     resetInvite: id => sb.rpc('reset_invite', { p_student: id }).then(chk),
 
-    exercises: () => sb.from('exercises').select('*').order('name').then(chk),
+    exercises: () => allRows(() => sb.from('exercises').select('*').order('name').order('id')),
     addExercise: e => sb.from('exercises').insert(e).select().single().then(chk),
     updateExercise: (id, e) => sb.from('exercises').update(e).eq('id', id).then(chk),
     deleteExercise: id => sb.from('exercises').delete().eq('id', id).then(chk),
 
-    plans: studentId => { let q = sb.from('plans').select('*'); if (studentId) q = q.eq('student_id', studentId); return q.order('position').then(chk); },
+    plans: studentId => allRows(() => { let q = sb.from('plans').select('*'); if (studentId) q = q.eq('student_id', studentId); return q.order('position').order('id'); }),
     addPlan: p => sb.from('plans').insert(p).select().single().then(chk),
-    templates: () => sb.from('templates').select('*').order('name').then(chk),
-    assessments: sid => { let q = sb.from('assessments').select('*'); if (sid) q = q.eq('student_id', sid); return q.order('taken_on', { ascending: false }).order('created_at', { ascending: false }).then(chk); },
+    templates: () => allRows(() => sb.from('templates').select('*').order('name').order('id')),
+    assessments: sid => allRows(() => { let q = sb.from('assessments').select('*'); if (sid) q = q.eq('student_id', sid); return q.order('taken_on', { ascending: false }).order('created_at', { ascending: false }).order('id'); }),
     addAssessment: a => sb.from('assessments').insert(a).select().single().then(chk),
     updateAssessment: (id, a) => sb.from('assessments').update(a).eq('id', id).then(chk),
     deleteAssessment: id => sb.from('assessments').delete().eq('id', id).then(chk),
-    anamneses: () => sb.from('anamnesis').select('*').then(chk),
+    anamneses: () => allRows(() => sb.from('anamnesis').select('*').order('student_id')),
     saveAnamnesis: (sid, answers) => sb.from('anamnesis').upsert({ student_id: sid, answers, updated_at: new Date().toISOString() }, { onConflict: 'student_id' }).select().single().then(chk),
     uploadPhoto: (path, blob) => sb.storage.from('fotos').upload(path, blob, { contentType: 'image/jpeg', upsert: false }).then(r => { if (r.error) throw r.error; return path; }),
     photoUrls: async paths => {
@@ -502,6 +516,9 @@ function makeApi(sb) {
       if (since) q = q.gte('done_at', since);
       return q.limit(limit || 500).then(chk);
     },
+    logsLight: since => allRows(() => sb.from('workout_logs').select(LOG_LIGHT).gte('done_at', since).order('done_at', { ascending: false }).order('id')),
+    lastWorkouts: () => sb.rpc('last_workouts').then(chk),
+    logsDetails: async ids => { const out = []; for (let i = 0; i < ids.length; i += 100) out.push(...chk(await sb.from('workout_logs').select('id,details').in('id', ids.slice(i, i + 100)))); return out; },
     addLog: l => sb.from('workout_logs').insert(l).select('id').single().then(chk),
     prefs: () => sb.from('notif_prefs').select('*').maybeSingle().then(chk),
     savePrefs: (uid, p) => sb.from('notif_prefs').upsert({ user_id: uid, ...p }, { onConflict: 'user_id' }).select().single().then(chk),
@@ -527,7 +544,50 @@ const exById = id => S.exercises.find(e => e.id === id);
 const groups = () => [...new Set(S.exercises.map(e => e.grp).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
 const studentById = id => S.students.find(s => s.id === id);
 const plansOf = sid => S.plans.filter(p => p.student_id === sid).sort((a, b) => a.position - b.position);
-const logsOf = sid => S.logs.filter(l => l.student_id === sid);
+// Registros por aluno, organizados uma vez (com 200 alunos e 50 mil registros, filtrar a cada aluno ficava lento).
+let _byStudent = { ref: null, len: -1, map: new Map() };
+function logsOf(sid) {
+  if (_byStudent.ref !== S.logs || _byStudent.len !== S.logs.length) {
+    const m = new Map();
+    for (const l of S.logs) { let a = m.get(l.student_id); if (!a) m.set(l.student_id, a = []); a.push(l); }
+    _byStudent = { ref: S.logs, len: S.logs.length, map: m };
+  }
+  return _byStudent.map.get(sid) || [];
+}
+// Detalhe dos exercícios de cada registro: buscado só quando aparece na tela.
+const logDetails = new Map();
+const withDet = l => l.details ? l : { ...l, details: logDetails.get(l.id) || [] };
+let _detBusy = false;
+async function ensureDetails(list) {
+  if (S.role !== 'trainer' || _detBusy || !api.logsDetails) return;
+  const ids = list.filter(l => !l.details && !logDetails.has(l.id) && !String(l.id).startsWith('local')).map(l => l.id);
+  if (!ids.length) return;
+  _detBusy = true;
+  try { (await api.logsDetails(ids)).forEach(r => logDetails.set(r.id, r.details || [])); ids.forEach(id => { if (!logDetails.has(id)) logDetails.set(id, []); }); }
+  catch { _detBusy = false; return; }
+  _detBusy = false;
+  if (!['plan', 'template'].includes(S.view.name) && !$('#dlg').open) { const y = window.scrollY; render(); window.scrollTo(0, y); }
+}
+let feedN = 50, finN = 60;
+// Último treino de um aluno: dos registros carregados ou, se for mais antigo, do resumo vindo do banco.
+function lastLogOf(sid) {
+  const l = logsOf(sid)[0]; if (l) return l;
+  const full = S.fullLogs && S.fullLogs.get(sid); if (full && full[0]) return full[0];
+  const at = S.last && S.last.get(sid); return at ? { done_at: at } : null;
+}
+// Ficha do aluno: histórico completo dele (com o detalhe dos exercícios), buscado ao abrir.
+async function ensureStudentLogs(sid) {
+  S.fullLogs = S.fullLogs || new Map();
+  if (S.fullLogs.has(sid)) return;
+  S.fullLogs.set(sid, null);
+  try {
+    const rows = await api.logs({ studentId: sid, limit: 300 });
+    const byId = new Map(S.logs.map(l => [l.id, l]));
+    S.fullLogs.set(sid, rows.map(r => byId.has(r.id) ? Object.assign(byId.get(r.id), r) : r));
+    if (S.view.name === 'student' && S.view.sid === sid && !$('#dlg').open) { const y = window.scrollY; render(); window.scrollTo(0, y); }
+  } catch { S.fullLogs.delete(sid); }
+}
+const studentLogs = sid => (S.fullLogs && S.fullLogs.get(sid)) || logsOf(sid);
 const unseen = () => S.logs.filter(l => !l.trainer_seen);
 let exFilter = { q: '', g: '' };
 let authTab = 'login', authMsg = null;
@@ -605,10 +665,12 @@ async function enter(user) {
     $('#app').innerHTML = `<div class="msg err">${esc(ptError(e))}</div><button class="btn block" data-act="reload">Tentar de novo</button><button class="btn block" data-act="logout">Sair</button>`;
   }
 }
+const LOG_WINDOW_DAYS = 60;   // visão geral do personal: últimos 60 dias (a ficha do aluno busca o histórico completo)
 async function loadTrainer() {
-  const since = new Date(Date.now() - 120 * 864e5).toISOString();
+  const since = new Date(Date.now() - LOG_WINDOW_DAYS * 864e5).toISOString();
+  api.lastWorkouts && api.lastWorkouts().then(r => { S.last = new Map(r.map(x => [x.student_id, x.last_at])); if (S.view.name !== 'plan' && S.view.name !== 'template') render(); }).catch(() => {});
   let anams;
-  [S.students, S.exercises, S.plans, S.logs, S.templates, S.assess, anams, S.prefs, S.charges, S.sessions] = await Promise.all([api.students(), api.exercises(), api.plans(), api.logs({ since }), api.templates(), api.assessments(), api.anamneses(), api.prefs().catch(() => null),
+  [S.students, S.exercises, S.plans, S.logs, S.templates, S.assess, anams, S.prefs, S.charges, S.sessions] = await Promise.all([api.students(), api.exercises(), api.plans(), api.logsLight(since), api.templates(), api.assessments(), api.anamneses(), api.prefs().catch(() => null),
     api.charges().catch(() => []), api.sessions(new Date(Date.now() - 60 * 864e5).toISOString()).catch(() => [])]);
   S.anam = Object.fromEntries(anams.map(a => [a.student_id, a]));
 }
@@ -725,14 +787,15 @@ function render() {
   $('#tabs').innerHTML = [['students', '👥', 'Alunos'], ['feed', '📈', 'Acompanhar'], ['negocio', '💼', 'Negócio'], ['exercises', '📚', 'Biblioteca'], ['settings', '⚙️', 'Ajustes']]
     .map(([k, i, l]) => { const b = k === 'feed' ? n : k === 'negocio' ? nPay : 0;
       return `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-k="${k}"><span>${i}</span>${l}${b ? `<b class="badge">${b}</b>` : ''}</button>`; }).join('');
-  if (v.name === 'student' && s) markSeen(logsOf(s.id));
+  if (v.name === 'student' && s) { markSeen(logsOf(s.id)); ensureStudentLogs(s.id); }
+  if (v.name === 'feed') ensureDetails([...unseen().slice(0, feedN), ...S.logs.filter(l => l.trainer_seen).slice(0, 30)]);
   hydratePhotos(); updatePushBox();
 }
 const empty = (t, d) => `<div class="empty"><b>${esc(t)}</b>${esc(d)}</div>`;
 
 function statusOf(s) {
   if (!s.user_id) return `<span class="st">⏳ Convite pendente</span>`;
-  const last = logsOf(s.id)[0];
+  const last = lastLogOf(s.id);
   if (!last) return `<span class="st warn">Ainda não treinou</span>`;
   const d = daysAgo(last.done_at);
   return `<span class="st ${d <= 3 ? 'ok' : d <= 7 ? 'warn' : 'bad'}">Treinou ${agoText(last.done_at)}</span>`;
@@ -853,7 +916,7 @@ function statsHtml(logs) {
 }
 function logCard(l, withName) {
   const s = withName && studentById(l.student_id);
-  const det = (l.details || []);
+  const det = (l.details || logDetails.get(l.id) || []);
   const isNew = S.role === 'trainer' ? !l.trainer_seen : !!(l.replied_at && l.replied_at > replySeenAt());
   const canReply = S.role === 'trainer' && !String(l.id).startsWith('local');
   return `<div class="card ${isNew ? 'new' : ''}">
@@ -876,7 +939,7 @@ function vStudent(s) {
       <div class="avatar">${esc(p.name.replace(/^Treino\s*/i, '').slice(0, 2) || 'T')}</div>
       <div class="grow"><b>${esc(p.name)}</b><small>${(p.items || []).length} exercício(s)${p.focus ? ' · ' + esc(p.focus) : ''}</small>${validityChip(p)} ${periodChip(p)}</div>
       <span class="chev">›</span></button>`).join('');
-  const logs = logsOf(s.id);
+  const logs = studentLogs(s.id);
   return `
     <div class="card"><div class="row"><div class="avatar">${esc(initials(s.name))}</div>
       <div class="grow"><h3>${esc(s.name)}</h3><small>${esc(s.goal || 'Sem objetivo definido')}</small>${statusOf(s)}</div>
@@ -896,7 +959,7 @@ function vStudent(s) {
     <button class="card" data-act="openAssess" style="cursor:pointer">${assessSummary(s.id)}<div style="margin-top:8px">${parqChip(s.id)}</div></button>
     <div class="toolbar"><h2>Acompanhamento</h2></div>
     ${statsHtml(logs)}
-    ${loadChart(logs, s.id)}
+    ${loadChart(logs.map(withDet), s.id)}
     ${logs.slice(0, 30).map(l => logCard(l)).join('') || empty('Nenhum treino registrado', s.user_id ? 'Quando o aluno finalizar um treino no app, ele aparece aqui.' : 'Envie o convite para o aluno começar.')}
     ${studentBizCards(s)}
     <div style="margin-top:20px">${featuresCard(s)}</div>
@@ -1130,7 +1193,9 @@ function newPlanDialog(s) {
     <div class="actions"><button class="btn" data-act="closeDlg">Cancelar</button></div></div>`;
   dlg.showModal();
 }
-let planSaveT = null, planSaveFn = null;
+let planSaveT = null, planSaveFn = null, planUnsaved = null, planRetryT = null;
+window.addEventListener('online', () => { if (planUnsaved) queuePlanSave(planUnsaved); });
+window.addEventListener('beforeunload', e => { if (planUnsaved || planSaveT) { flushPlanSave(); e.preventDefault(); e.returnValue = ''; } });
 function queuePlanSave(p) {
   const el = $('#saving'); if (el) el.textContent = 'Salvando…';
   clearTimeout(planSaveT);
@@ -1140,7 +1205,14 @@ function queuePlanSave(p) {
       if (p.student_id) await api.updatePlan(p.id, { name: p.name, focus: p.focus, items: p.items, ends_on: p.ends_on || null, period: p.period || null, updated_at: new Date().toISOString() });
       else await api.updateTemplate(p.id, { name: p.name, focus: p.focus, items: p.items, period: p.period || null, updated_at: new Date().toISOString() });
       const e2 = $('#saving'); if (e2) e2.textContent = 'Salvo ✓';
-    } catch (e) { const e2 = $('#saving'); if (e2) e2.textContent = '⚠️ Não salvo'; toast('Erro ao salvar: ' + ptError(e)); }
+      if (planUnsaved === p) planUnsaved = null;
+    } catch (e) {
+      // Sem internet ou falha: guarda e tenta de novo sozinho (a cada 10 s e quando a internet voltar).
+      planUnsaved = p;
+      const e2 = $('#saving'); if (e2) e2.textContent = '⚠️ Não salvo — tentando de novo';
+      if (!planRetryT) toast('Sem conexão: a alteração será salva assim que a internet voltar');
+      clearTimeout(planRetryT); planRetryT = setTimeout(() => { planRetryT = null; if (planUnsaved === p) queuePlanSave(p); }, 10000);
+    }
   };
   planSaveT = setTimeout(planSaveFn, 700);
 }
@@ -1431,7 +1503,7 @@ function vNegocio(sub) {
 function vPainel() {
   const now = Date.now(), today = localDay(), month = today.slice(0, 7);
   const linked = S.students.filter(s => s.user_id);
-  const lastOf = sid => logsOf(sid)[0];
+  const lastOf = sid => lastLogOf(sid);
   const active = linked.filter(s => { const l = lastOf(s.id); return l && daysAgo(l.done_at) <= 14; });
   const logs28 = S.logs.filter(l => now - new Date(l.done_at) < 28 * 864e5).length;
   const freq = active.length ? logs28 / active.length / 4 : 0;
@@ -1497,7 +1569,7 @@ function vFinanceiro() {
       <div class="btnrow">${[0, 1].map(o => `<button class="btn ${o ? '' : 'primary'}" data-act="genCharges" data-ym="${ym(o)}" ${withFee.length ? '' : 'disabled'}>Gerar mensalidades de ${new Date(ym(o) + '-15T12:00').toLocaleDateString('pt-BR', { month: 'long' })}</button>`).join('')}
         <button class="btn" data-act="newCharge">+ Cobrança avulsa</button></div></div>
     <div class="chips">${[['abertas', 'Em aberto'], ['atrasadas', 'Atrasadas'], ['pagas', 'Pagas'], ['todas', 'Todas']].map(([k, l]) => `<button class="chip ${finFilter === k ? 'on' : ''}" data-act="finFilter" data-k="${k}">${l}</button>`).join('')}</div>
-    ${list.map(c => chargeCard(c)).join('') || empty('Nenhuma cobrança aqui', finFilter === 'abertas' ? 'Gere as mensalidades do mês ou crie uma cobrança avulsa.' : '')}`;
+    ${list.slice(0, finN).map(c => chargeCard(c)).join('')}${list.length > finN ? `<button class="btn block" data-act="moreFin">Ver mais (${list.length - finN} restantes)</button>` : ''}${list.length ? '' : empty('Nenhuma cobrança aqui', finFilter === 'abertas' ? 'Gere as mensalidades do mês ou crie uma cobrança avulsa.' : '')}`;
 }
 let agRange = 'prox';
 function vAgenda() {
@@ -1540,13 +1612,14 @@ function studentBizCards(s) {
 /* ---------- personal: acompanhamento geral ---------- */
 function vFeed() {
   const nw = unseen();
-  const inactive = S.students.filter(s => s.user_id).map(s => ({ s, last: logsOf(s.id)[0] }))
+  const inactive = S.students.filter(s => s.user_id).map(s => ({ s, last: lastLogOf(s.id) }))
     .filter(x => !x.last || daysAgo(x.last.done_at) >= 7);
   const pending = S.students.filter(s => !s.user_id);
   const renew = S.plans.map(p => ({ p, v: validity(p), s: studentById(p.student_id) })).filter(x => x.v && x.v.n <= 7 && x.s).sort((a, b) => a.v.n - b.v.n);
   return `
     <div class="toolbar"><h2>Novos registros</h2>${nw.length ? `<button class="btn" data-act="seenAll">Marcar como vistos</button>` : ''}</div>
-    ${nw.map(l => logCard(l, true)).join('') || empty('Tudo em dia ✓', 'Nenhum treino novo desde a última vez.')}
+    ${nw.slice(0, feedN).map(l => logCard(l, true)).join('') || empty('Tudo em dia ✓', 'Nenhum treino novo desde a última vez.')}
+    ${nw.length > feedN ? `<button class="btn block" data-act="moreFeed">Ver mais (${nw.length - feedN} restantes)</button>` : ''}
     ${renew.length ? `<div class="toolbar"><h2>Treinos para renovar</h2></div>
       ${renew.map(({ p, s }) => `<button class="card row" data-act="openPlanOf" data-sid="${s.id}" data-pid="${p.id}"><div class="avatar">${esc(initials(s.name))}</div>
         <div class="grow"><b>${esc(s.name)} · ${esc(p.name)}</b>${validityChip(p)}</div><span class="chev">›</span></button>`).join('')}` : ''}
@@ -1828,6 +1901,7 @@ function finishDialog() {
   $('#finForm').onsubmit = e => {
     if (!e.submitter || e.submitter.value !== 'ok') return;
     const log = {
+      id: newId(),   // identidade criada no celular: reenviar o mesmo treino nunca duplica
       student_id: S.me.id, plan_id: P.id, plan_name: P.name, done_at: new Date().toISOString(),
       duration_min: pr.start ? Math.min(300, Math.max(1, Math.round((Date.now() - pr.start) / 60000))) : null,
       effort, comment: e.target.comment ? e.target.comment.value.trim() : '',
@@ -1852,12 +1926,16 @@ function finishDialog() {
   };
   dlg.showModal();
 }
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+// Já existe no banco (envio anterior chegou, mas a resposta se perdeu): conta como enviado.
+const isDuplicate = e => e && (e.code === '23505' || /duplicate key/i.test(e.message || ''));
+async function sendLog(log) { try { return await api.addLog(log); } catch (e) { if (isDuplicate(e)) return { id: log.id }; throw e; } }
 async function saveLog(log) {
   const P = S.plans[curPlan];
   store.del(progKey(P.id));
   try {
-    const row = await api.addLog(log);
-    const id = (row && row.id) || 'local-' + Date.now();
+    const row = await sendLog(log);
+    const id = (row && row.id) || log.id;
     S.logs.unshift({ ...log, id, trainer_seen: false });
     notifyQuiet('log', id);
     toast(`${P.name} concluído e enviado ao personal! 🎉`);
@@ -1869,18 +1947,30 @@ async function saveLog(log) {
   store.set('mp_cache_' + S.user.id, { me: S.me, plans: S.plans, exercises: S.exercises, logs: S.logs, assess: S.assess, anam: S.anam, charges: S.charges, sessions: S.sessions });
   render(); window.scrollTo(0, 0);
 }
+let _flushing = false;
 async function flushPending() {
-  if (!S.user || S.role !== 'student') return;
-  const k = 'mp_pending_' + S.user.id;
-  const pend = store.get(k, []);
-  if (!pend.length) return;
-  const left = [];
-  for (const log of pend) {
-    try { const row = await api.addLog(log); S.logs.unshift({ ...log, id: (row && row.id) || 'local-' + Math.random(), trainer_seen: false }); } catch { left.push(log); }
-  }
-  store.set(k, left);
-  S.logs.sort((a, b) => new Date(b.done_at) - new Date(a.done_at));
-  if (left.length < pend.length) { toast('Treinos pendentes enviados ao personal ✓'); render(); }
+  if (!S.user || S.role !== 'student' || _flushing) return;   // um envio por vez (evita mandar o mesmo treino duas vezes)
+  _flushing = true;
+  try {
+    const k = 'mp_pending_' + S.user.id;
+    const raw = store.get(k, []);
+    const pend = (Array.isArray(raw) ? raw : []).filter(x => x && typeof x === 'object' && x.student_id);   // ignora itens corrompidos
+    if (pend.length !== (Array.isArray(raw) ? raw.length : 0)) store.set(k, pend);
+    if (!pend.length) return;
+    let sent = 0;
+    for (const log of pend) {
+      log.id ||= newId();
+      try {
+        await sendLog(log);
+        // tira da fila logo após enviar, um por um
+        store.set(k, store.get(k, []).filter(x => x.id !== log.id));
+        if (!S.logs.some(x => x.id === log.id)) S.logs.unshift({ ...log, trainer_seen: false });
+        notifyQuiet('log', log.id); sent++;
+      } catch { store.set(k, store.get(k, []).map(x => x === log || (!x.id && x.done_at === log.done_at) ? log : x)); }
+    }
+    S.logs.sort((a, b) => new Date(b.done_at) - new Date(a.done_at));
+    if (sent) { toast('Treinos pendentes enviados ao personal ✓'); render(); }
+  } finally { _flushing = false; }
 }
 window.addEventListener('online', flushPending);
 // Personal: ao voltar para o app, busca treinos novos dos alunos (sem atrapalhar quem está editando).
@@ -1889,9 +1979,10 @@ async function refreshTrainer(force) {
   if (S.role !== 'trainer' || (force !== true && (document.hidden || Date.now() - lastRefresh < 15000))) return;
   lastRefresh = Date.now();
   try {
-    const since = new Date(Date.now() - 120 * 864e5).toISOString();
+    const since = new Date(Date.now() - LOG_WINDOW_DAYS * 864e5).toISOString();
     let anams;
-    [S.students, S.logs, anams, S.charges, S.sessions] = await Promise.all([api.students(), api.logs({ since }), api.anamneses(), api.charges().catch(() => S.charges),
+    S.fullLogs = new Map();
+    [S.students, S.logs, anams, S.charges, S.sessions] = await Promise.all([api.students(), api.logsLight(since), api.anamneses(), api.charges().catch(() => S.charges),
       api.sessions(new Date(Date.now() - 60 * 864e5).toISOString()).catch(() => S.sessions)]);
     S.anam = Object.fromEntries(anams.map(a => [a.student_id, a]));
     if (!['plan', 'template'].includes(S.view.name) && !$('#dlg').open) render();
@@ -2266,9 +2357,9 @@ const actions = {
   openPlan: el => go({ name: 'plan', sid: S.view.sid, pid: el.dataset.id }),
   openPlanOf: el => go({ name: 'plan', sid: el.dataset.sid, pid: el.dataset.pid }),
   setEnds: el => { const { p } = cur(), w = +el.dataset.w; p.ends_on = w ? localDay(Date.now() + w * 7 * 864e5) : null; render(); queuePlanSave(p); toast(w ? `Válido até ${fmtDay(p.ends_on)}` : 'Treino sem validade'); },
-  chartEx: el => { chartSel[el.dataset.key] = el.dataset.name; const c = el.closest('.chart'); const logs = S.role === 'trainer' ? logsOf(el.dataset.key) : [...store.get('mp_pending_' + S.user.id, []), ...S.logs]; c.outerHTML = loadChart(logs, el.dataset.key); },
+  chartEx: el => { chartSel[el.dataset.key] = el.dataset.name; const c = el.closest('.chart'); const logs = S.role === 'trainer' ? studentLogs(el.dataset.key).map(withDet) : [...store.get('mp_pending_' + S.user.id, []), ...S.logs]; c.outerHTML = loadChart(logs, el.dataset.key); },
   replyLog: el => {
-    const l = S.logs.find(x => x.id === el.dataset.id), st = studentById(l.student_id);
+    const l = S.logs.find(x => x.id === el.dataset.id) || [...(S.fullLogs || new Map()).values()].flat().find(x => x && x.id === el.dataset.id), st = studentById(l.student_id);
     formDialog(`Responder ${st ? st.name.split(' ')[0] : 'aluno'}`,
       [{ k: 'reply', label: 'Sua resposta (aparece no histórico do aluno)', type: 'textarea', ph: 'Ex.: Ótimo treino! Na próxima, suba 2 kg no agachamento.' }],
       { reply: l.trainer_reply }, async d => {
@@ -2324,7 +2415,9 @@ const actions = {
   },
   // negócio
   negSub: el => go({ name: 'negocio', sub: el.dataset.k }),
-  finFilter: el => { finFilter = el.dataset.k; render(); },
+  finFilter: el => { finFilter = el.dataset.k; finN = 60; render(); },
+  moreFin: () => { finN += 60; render(); },
+  moreFeed: () => { feedN += 50; render(); },
   agRange: el => { agRange = el.dataset.k; render(); },
   pixDialog: () => pixDialog(),
   feeDialog: () => feeDialog(cur().s),

@@ -13,6 +13,11 @@ export function localParts(date, tz) {
   return { date: `${o.year}-${o.month}-${o.day}`, dow: DOW[o.weekday], min: (+o.hour) * 60 + (+o.minute) };
 }
 const toMin = t => { const [h, m] = String(t).split(':'); return (+h) * 60 + (+m); };
+// Executa tarefas com no máximo `n` ao mesmo tempo (envia milhares de notificações sem estourar o tempo da função).
+export async function pool(items, n, fn) {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) { const k = i++; await fn(items[k], k); } }));
+}
 
 export async function handleReminders(now, repo, send) {
   const due = [];
@@ -28,22 +33,37 @@ export async function handleReminders(now, repo, send) {
   const logs = sids.length ? await repo.recentLogs(sids, new Date(now - 14 * 864e5).toISOString()) : [];
   const plans = sids.length ? await repo.plansOf(sids) : [];
   let sent = 0;
+  // marca "lembrete do dia" de todos de uma vez (agrupado por data local)
+  const byDate = {};
+  for (const { p, L } of due) (byDate[L.date] ||= []).push(p.user_id);
+  for (const [d, ids] of Object.entries(byDate)) {
+    if (repo.setRemindedMany) { for (let i = 0; i < ids.length; i += 500) await repo.setRemindedMany(d, ids.slice(i, i + 500)); }
+    else for (const u of ids) await repo.setReminded(u, d);
+  }
+  const stBy = new Map(students.map(s => [s.user_id, s]));
+  const logsBy = new Map(); for (const l of logs) { let a = logsBy.get(l.student_id); if (!a) logsBy.set(l.student_id, a = []); a.push(l); }
+  const plansBy = new Map(); for (const x of plans) { let a = plansBy.get(x.student_id); if (!a) plansBy.set(x.student_id, a = []); a.push(x); }
+  const jobs = [];
   for (const { p, L } of due) {
-    const st = students.find(s => s.user_id === p.user_id);
-    await repo.setReminded(p.user_id, L.date);
+    const st = stBy.get(p.user_id);
     if (!st) continue;
-    const mine = logs.filter(l => l.student_id === st.id).sort((a, b) => String(b.done_at).localeCompare(String(a.done_at)));
+    const mine = (logsBy.get(st.id) || []).sort((a, b) => String(b.done_at).localeCompare(String(a.done_at)));
     if (mine.some(l => localParts(new Date(l.done_at), p.tz || 'America/Sao_Paulo').date === L.date)) continue; // já treinou hoje
-    const ps = plans.filter(x => x.student_id === st.id).sort((a, b) => a.position - b.position);
+    const ps = (plansBy.get(st.id) || []).sort((a, b) => a.position - b.position);
     let next = ps[0];
     if (mine[0] && ps.length > 1) { const i = ps.findIndex(x => x.name === mine[0].plan_name); if (i >= 0) next = ps[(i + 1) % ps.length]; }
     const msg = { title: 'Hoje é dia de treino! 💪', body: next ? `Seu ${next.name} está te esperando.` : 'Bora treinar? Seu treino está no app.', url: './#treino', tag: `lembrete-${L.date}` };
-    const subs = await repo.subs(p.user_id);
+    jobs.push({ uid: p.user_id, msg });
+  }
+  // aparelhos de todos de uma vez, envio com até 25 notificações em paralelo
+  const subsAll = repo.subsMany ? await repo.subsMany(jobs.map(j => j.uid)) : null;
+  await pool(jobs, 25, async ({ uid, msg }) => {
+    const subs = subsAll ? subsAll.filter(s => s.user_id === uid) : await repo.subs(uid);
     for (const s of subs) {
       try { await send(s, JSON.stringify(msg)); sent++; }
       catch (e) { if (e && (e.statusCode === 404 || e.statusCode === 410)) await repo.deleteSub(s.endpoint); }
     }
-  }
+  });
   return { checked: due.length, sent };
 }
 // ===== fim do núcleo =====
@@ -59,6 +79,8 @@ Deno.serve(async req => {
     recentLogs: (sids, since) => rows(admin.from('workout_logs').select('student_id, done_at, plan_name').in('student_id', sids).gte('done_at', since)),
     plansOf: sids => rows(admin.from('plans').select('student_id, name, position').in('student_id', sids)),
     setReminded: (uid, day) => admin.from('notif_prefs').update({ last_reminded: day }).eq('user_id', uid),
+    setRemindedMany: (day, uids) => admin.from('notif_prefs').update({ last_reminded: day }).in('user_id', uids),
+    subsMany: async uids => { const out = []; for (let i = 0; i < uids.length; i += 500) out.push(...await rows(admin.from('push_subs').select('*').in('user_id', uids.slice(i, i + 500)))); return out; },
     subs: uid => rows(admin.from('push_subs').select('*').eq('user_id', uid)),
     deleteSub: endpoint => admin.from('push_subs').delete().eq('endpoint', endpoint)
   };
