@@ -1,83 +1,71 @@
-import math, sys, uharfbuzz as hb
+"""Logo Leo Castro Personal — proposta "Ascensão".
+Gera todos os SVGs da marca. Uso: python3 gerar-logo.py <pasta-de-saída>
+Precisa de: fonttools e uharfbuzz (pip install fonttools uharfbuzz) e a fonte Inter Display."""
+import math, sys
+import uharfbuzz as hb
 from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 OUT = sys.argv[1]
-NAVY, ORANGE, WHITE = '#0f2742', '#ff6b1a', '#ffffff'
-FONTS = {'black': '/usr/share/fonts/opentype/inter/InterDisplay-Black.otf', 'semi': '/usr/share/fonts/opentype/inter/InterDisplay-SemiBold.otf'}
-_cache = {}
-def text_path(text, weight, size, tracking=0.0):
-    """Texto → caminho SVG (com kerning via HarfBuzz). Retorna (d, largura, altura das maiúsculas)."""
-    path = FONTS[weight]
-    if path not in _cache:
-        data = open(path, 'rb').read(); _cache[path] = (TTFont(path), hb.Font(hb.Face(data)))
-    tt, f = _cache[path]
-    upm = tt['head'].unitsPerEm; s = size / upm
-    buf = hb.Buffer(); buf.add_str(text); buf.guess_segment_properties(); hb.shape(f, buf, {'kern': True, 'liga': False})
-    gs = tt.getGlyphSet(); order = tt.getGlyphOrder()
-    pen = SVGPathPen(gs); x = 0
-    for info, pos in zip(buf.glyph_infos, buf.glyph_positions):
-        g = order[info.codepoint]
-        gs[g].draw(TransformPen(pen, (s, 0, 0, -s, x + pos.x_offset * s, -pos.y_offset * s)))
-        x += pos.x_advance * s + tracking * size
-    cap = tt['OS/2'].sCapHeight * s
-    return pen.getCommands(), x - tracking * size, cap
+INK, BLUE, BLUE_D, WHITE = '#111827', '#2f6bff', '#4d82ff', '#ffffff'
+FONTS = {'blackit': '/usr/share/fonts/opentype/inter/InterDisplay-BlackItalic.otf', 'semi': '/usr/share/fonts/opentype/inter/InterDisplay-SemiBold.otf'}
+_c = {}
+def text_path(text, w, size, track=0.0):
+    p = FONTS[w]
+    if p not in _c: _c[p] = (TTFont(p), hb.Font(hb.Face(open(p, 'rb').read())))
+    tt, f = _c[p]; s = size / tt['head'].unitsPerEm
+    buf = hb.Buffer(); buf.add_str(text); buf.guess_segment_properties(); hb.shape(f, buf, {'kern': True})
+    gs = tt.getGlyphSet(); order = tt.getGlyphOrder(); pen = SVGPathPen(gs); x = 0
+    for i, pos in zip(buf.glyph_infos, buf.glyph_positions):
+        gs[order[i.codepoint]].draw(TransformPen(pen, (s, 0, 0, -s, x + pos.x_offset * s, 0))); x += pos.x_advance * s + track * size
+    return pen.getCommands(), x - track * size, tt['OS/2'].sCapHeight * s
 
-def symbol(c_color, l_color, cx=256, cy=256, scale=1.0):
-    """Símbolo LC no quadrado 512: C laranja aberto à direita + L cuja base atravessa a abertura."""
-    k = scale
-    R, W = 172 * k, 62 * k                     # raio médio e espessura do C
-    a0, a1 = math.radians(47), math.radians(313) # abertura de 94° à direita
-    ro, ri = R + W / 2, R - W / 2
-    P = lambda r, a: (cx + r * math.cos(a), cy - r * math.sin(a))
-    o0, o1, i1, i0 = P(ro, a0), P(ro, a1), P(ri, a1), P(ri, a0)
-    c = (f'M{o0[0]:.1f},{o0[1]:.1f} A{ro:.1f},{ro:.1f} 0 1 0 {o1[0]:.1f},{o1[1]:.1f} '
-         f'L{i1[0]:.1f},{i1[1]:.1f} A{ri:.1f},{ri:.1f} 0 1 1 {i0[0]:.1f},{i0[1]:.1f} Z')
-    # L: haste vertical + base que sai pela abertura com corte inclinado (movimento)
-    x0, x1 = cx - 82 * k, cx - 14 * k           # haste
-    yt, yb = cy - 124 * k, cy + 84 * k          # topo e base
-    fy = yb - 62 * k                            # topo da base
-    fx = cx + 204 * k                           # ponta da base (passa do C)
-    l = (f'M{x0:.1f},{yt:.1f} L{x1:.1f},{yt - 14*k:.1f} L{x1:.1f},{fy:.1f} L{fx:.1f},{fy:.1f} '
-         f'L{fx - 26*k:.1f},{yb:.1f} L{x0:.1f},{yb:.1f} Z')
-    return f'<path d="{c}" fill="{c_color}"/><path d="{l}" fill="{l_color}"/>'
+def symbol(c_l, c_arrow):
+    """'L' inclinado (12°, como o itálico do nome) + seta de progresso subindo — no quadrado 512."""
+    k = math.tan(math.radians(12))
+    sk = lambda x, y: (x + (400 - y) * k, y)
+    path = lambda pts: 'M' + ' L'.join(f'{x:.1f},{y:.1f}' for x, y in pts) + ' Z'
+    L = path([sk(118, 104), sk(186, 104), sk(186, 336), sk(352, 336), sk(338, 400), sk(118, 400)])
+    # seta: haste grossa a 45° com ponta triangular
+    u, n = (math.sqrt(.5), -math.sqrt(.5)), (math.sqrt(.5), math.sqrt(.5))
+    P0, P1, h, H, T = (262, 302), (352, 212), 31, 74, 82
+    add = lambda p, v, s: (p[0] + v[0] * s, p[1] + v[1] * s)
+    tip = add(P1, u, T)
+    A = path([add(P0, n, h), add(P1, n, h), add(P1, n, H), tip, add(P1, n, -H), add(P1, n, -h), add(P0, n, -h)])
+    return f'<path d="{L}" fill="{c_l}"/><path d="{A}" fill="{c_arrow}"/>'
 
 def svg(w, h, body, bg=None):
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">'
-            + (f'<rect width="{w}" height="{h}" fill="{bg}"/>' if bg else '') + body + '</svg>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w:.0f} {h:.0f}" width="{w:.0f}" height="{h:.0f}">'
+            + (f'<rect width="{w:.0f}" height="{h:.0f}" fill="{bg}"/>' if bg else '') + body + '</svg>')
 
-def horizontal(text_color, l_color, tag_color, bg=None):
-    name, nw, ncap = text_path('LEO CASTRO', 'black', 150, 0.01)
-    tag, tw, tcap = text_path('PERSONAL TRAINER', 'semi', 58, 0.28)
-    sym_h = 360; sx = 0; s = sym_h / 512
-    gx = sym_h + 40                                   # texto começa depois do símbolo
-    H = sym_h; top = (H - (ncap + 46 + tcap)) / 2
-    W = gx + max(nw, tw) + 8
-    body = (f'<g transform="translate({sx},0) scale({s})">{symbol(ORANGE, l_color)}</g>'
-            f'<path transform="translate({gx},{top + ncap:.1f})" d="{name}" fill="{text_color}"/>'
-            f'<rect x="{gx + 2}" y="{top + ncap + 46 + tcap / 2 - 3.5:.1f}" width="56" height="7" rx="3.5" fill="{ORANGE}"/>'
-            f'<path transform="translate({gx + 82},{top + ncap + 46 + tcap:.1f})" d="{tag}" fill="{tag_color}"/>')
-    return svg(round(W), H, body, bg)
-
-def stacked(text_color, l_color, tag_color, bg=None):
-    name, nw, ncap = text_path('LEO CASTRO', 'black', 130, 0.01)
-    tag, tw, tcap = text_path('PERSONAL TRAINER', 'semi', 46, 0.3)
-    W = max(nw, tw, 420) + 80; sym = 380; s = sym / 512
-    H = sym + 40 + ncap + 34 + tcap + 30
-    body = (f'<g transform="translate({(W - sym) / 2:.1f},0) scale({s})">{symbol(ORANGE, l_color)}</g>'
-            f'<path transform="translate({(W - nw) / 2:.1f},{sym + 40 + ncap:.1f})" d="{name}" fill="{text_color}"/>'
-            f'<path transform="translate({(W - tw) / 2:.1f},{sym + 40 + ncap + 34 + tcap:.1f})" d="{tag}" fill="{tag_color}"/>')
-    return svg(round(W), round(H), body, bg)
-
+NAME = text_path('LEO CASTRO', 'blackit', 150, 0.0)
+def horizontal(txt, sym_l, arrow, tagc):
+    name, nw, ncap = NAME; tag, tw, tcap = text_path('PERSONAL TRAINER', 'semi', 46, 0.30)
+    sym = 330; s = sym / 512; gx = sym + 18
+    top = (sym - (ncap + 40 + tcap)) / 2
+    W = gx + max(nw, tw + 12) + 6
+    body = (f'<g transform="scale({s})">{symbol(sym_l, arrow)}</g>'
+            f'<path transform="translate({gx},{top + ncap:.1f})" d="{name}" fill="{txt}"/>'
+            f'<path transform="translate({gx + 12},{top + ncap + 40 + tcap:.1f})" d="{tag}" fill="{tagc}"/>')
+    return svg(W, sym, body)
+def vertical(txt, sym_l, arrow, tagc):
+    name, nw, ncap = NAME; tag, tw, tcap = text_path('PERSONAL TRAINER', 'semi', 44, 0.32)
+    W = max(nw, tw) + 40; sym = 360; s = sym / 512
+    H = sym + 26 + ncap + 36 + tcap + 10
+    body = (f'<g transform="translate({(W - sym) / 2:.1f},0) scale({s})">{symbol(sym_l, arrow)}</g>'
+            f'<path transform="translate({(W - nw) / 2:.1f},{sym + 26 + ncap:.1f})" d="{name}" fill="{txt}"/>'
+            f'<path transform="translate({(W - tw) / 2:.1f},{sym + 26 + ncap + 36 + tcap:.1f})" d="{tag}" fill="{tagc}"/>')
+    return svg(W, H, body)
+icon = lambda sc, bg, l, a: svg(512, 512, f'<g transform="translate(256,256) scale({sc}) translate(-256,-256)">{symbol(l, a)}</g>', bg)
 files = {
-  'leo-castro-simbolo.svg': svg(512, 512, symbol(ORANGE, NAVY)),
-  'leo-castro-simbolo-negativo.svg': svg(512, 512, symbol(ORANGE, WHITE)),
-  'leo-castro-icone-app.svg': svg(512, 512, f'<g transform="translate(256,256) scale(.72) translate(-256,-256)">{symbol(ORANGE, WHITE)}</g>', NAVY),
-  'leo-castro-horizontal.svg': horizontal(NAVY, NAVY, NAVY),
-  'leo-castro-horizontal-negativo.svg': horizontal(WHITE, WHITE, '#c9d6e8'),
-  'leo-castro-vertical.svg': stacked(NAVY, NAVY, NAVY),
-  'leo-castro-vertical-negativo.svg': stacked(WHITE, WHITE, '#c9d6e8'),
-  'leo-castro-badge.svg': svg(512, 512, f'<g transform="translate(256,256) scale(.86) translate(-256,-256)">{symbol(WHITE, WHITE)}</g>'),
+  'leo-castro-simbolo.svg': svg(512, 512, symbol(INK, BLUE)),
+  'leo-castro-simbolo-negativo.svg': svg(512, 512, symbol(WHITE, BLUE_D)),
+  'leo-castro-icone-app.svg': icon(.78, INK, WHITE, BLUE_D),
+  'leo-castro-horizontal.svg': horizontal(INK, INK, BLUE, BLUE),
+  'leo-castro-horizontal-negativo.svg': horizontal(WHITE, WHITE, BLUE_D, '#9db8ff'),
+  'leo-castro-vertical.svg': vertical(INK, INK, BLUE, BLUE),
+  'leo-castro-vertical-negativo.svg': vertical(WHITE, WHITE, BLUE_D, '#9db8ff'),
+  'leo-castro-badge.svg': icon(.9, None, WHITE, WHITE),
 }
 for n, c in files.items(): open(f'{OUT}/{n}', 'w').write(c)
-print('ok', list(files))
+print('ok:', ', '.join(files))

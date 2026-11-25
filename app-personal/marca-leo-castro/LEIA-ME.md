@@ -1,20 +1,20 @@
 # Marca Leo Castro Personal
 
-## Símbolo
-Um **C** laranja aberto para a direita com um **L** cuja base atravessa a abertura: as iniciais de
-Leo Castro e a ideia de movimento e evolução, saindo do lugar.
+## Símbolo — "Ascensão"
+Um **L** inclinado (o mesmo ângulo do itálico do nome) e uma **seta de progresso** subindo:
+a inicial do Leo e a ideia de evolução constante, que é o que o aluno busca.
 
 ## Cores
 | Cor | Código | Uso |
 |---|---|---|
-| Azul-marinho | `#0f2742` | Cor principal: textos do logo, fundos, topo do app |
-| Laranja | `#ff6b1a` | Destaque: o "C" do símbolo, detalhes, botões no modo escuro |
+| Grafite | `#111827` | Cor principal: nome, "L" do símbolo, fundos escuros, topo do app |
+| Azul elétrico | `#2f6bff` | Destaque: a seta, "PERSONAL TRAINER", detalhes e botões no modo escuro |
 | Branco | `#ffffff` | Logo sobre fundos escuros |
 
-Evite texto pequeno laranja sobre fundo branco (pouco contraste). Prefira o azul-marinho.
+Sobre fundo escuro, use a versão negativa (azul mais claro `#4d82ff`), que mantém o contraste.
 
 ## Fonte
-**Inter Display** (Black no nome, SemiBold em "PERSONAL TRAINER"). É gratuita (licença SIL Open Font):
+**Inter Display** (Black Italic no nome, SemiBold em "PERSONAL TRAINER"). É gratuita (licença SIL Open Font):
 https://rsms.me/inter/ — nos arquivos SVG o texto já está convertido em desenho, então não precisa
 ter a fonte instalada para usar o logo.
 

@@ -7,8 +7,8 @@ self.MARCA = {
   nome: 'Leo Castro Personal',            // nome do app (topo, tela de login, título)
   nomeCurto: 'Leo Castro',                // nome embaixo do ícone na tela inicial do celular
   slogan: 'Treino personalizado com acompanhamento de perto',
-  corPrincipal: '#0f2742',                // azul-marinho Leo Castro
-  corDestaque: '#ff6b1a',                 // laranja Leo Castro
+  corPrincipal: '#111827',                // grafite Leo Castro
+  corDestaque: '#2f6bff',                 // azul elétrico Leo Castro
   logo: 'logo.png',                       // logo para fundo claro
   logoEscuro: 'logo-escuro.png',          // logo para fundo escuro (opcional)
   monograma: 'LC',                        // letras usadas quando não há logo
