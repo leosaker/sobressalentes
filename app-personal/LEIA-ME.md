@@ -45,6 +45,30 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
 - Notificações: resposta do personal, treino atualizado e lembrete "Hoje é dia de treino!" nos dias e horário que escolher
 - Histórico e treinos do mês. Funciona offline: o registro é enviado quando a internet volta
 
+## Marca do professor (um app para cada professor)
+O app é o mesmo para todos; o que muda é a **marca**: nome, logo, cores, frase, Instagram e WhatsApp.
+Tudo isso fica no arquivo `marca.js` e nos ícones (`icon-192.png`, `icon-512.png`, `apple-touch-icon.png`,
+`badge-96.png`), mais o `manifest.json`.
+
+**Marca atual:** L Castro Personal (@lcastropersonal), **provisória**: monograma "LC" e cores padrão,
+até chegarem o logo e as cores oficiais.
+
+**Para criar ou trocar uma marca:**
+1. Abra `ferramentas/criar-marca.html` no navegador (no app publicado: `https://SEU-APP/ferramentas/criar-marca.html`).
+2. Preencha nome, frase, cores, Instagram e WhatsApp e envie o logo. A prévia mostra como vai ficar
+   e avisa se alguma cor deixar os textos difíceis de ler.
+3. Clique em **Baixar pacote da marca**. Descompacte o `.zip` na pasta do app, substituindo os arquivos.
+4. Publique de novo.
+
+As cores são ajustadas sozinhas para ficarem legíveis no modo claro e no escuro. Se a cor da marca for clara
+(ex.: amarelo), os textos sobre ela ficam pretos.
+
+**Para atender outro professor:** faça uma **cópia da pasta do app**, aplique a marca dele e publique num
+endereço próprio (ex.: outro site no Netlify). O recomendado é cada professor ter **o próprio projeto no
+Supabase** (os passos abaixo): os dados ficam separados e cada um usa a sua cota gratuita.
+Também é possível vários professores usarem o mesmo Supabase (cada um só vê os próprios alunos);
+basta autorizar o e-mail de cada um na tabela `trainer_allowlist`.
+
 ## Como colocar no ar (uns 15 minutos, tudo grátis)
 
 ### 1. Criar o banco no Supabase

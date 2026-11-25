@@ -1,6 +1,10 @@
 // Service worker: app offline (rede primeiro, cache como reserva) e notificações no celular.
-const CACHE = 'meu-personal-v3';
-const ASSETS = ['./', './index.html', './config.js', './manifest.json', './icon.svg', './icon-192.png', './badge-96.png'];
+// Arquivos de marca antigos usam "window.MARCA"; no service worker "window" não existe.
+self.window = self;
+try { importScripts('marca.js'); } catch (e) { /* sem marca: usa os padrões */ }
+const MARCA = self.MARCA || {};
+const CACHE = 'meu-personal-v4';
+const ASSETS = ['./', './index.html', './marca.js', './config.js', './manifest.json', './icon-192.png', './badge-96.png'].concat(MARCA.logo ? ['./' + MARCA.logo] : []);
 const CDN = 'https://cdn.jsdelivr.net';
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
@@ -26,7 +30,7 @@ self.addEventListener('fetch', e => {
 self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data ? e.data.text() : '' }; }
-  e.waitUntil(self.registration.showNotification(d.title || 'Meu Personal', {
+  e.waitUntil(self.registration.showNotification(d.title || MARCA.nome || 'Meu Personal', {
     body: d.body || '', icon: 'icon-192.png', badge: 'badge-96.png',
     tag: d.tag || undefined, renotify: !!d.tag, data: { url: d.url || './' }
   }));

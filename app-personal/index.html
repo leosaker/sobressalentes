@@ -8,18 +8,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Treinos">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg">
+<link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{
   --bg:#f4f6f8; --surface:#fff; --surface2:#eef2f5; --text:#0f172a; --muted:#64748b;
-  --line:#e2e8f0; --primary:#0f766e; --primary-ink:#fff; --accent:#14b8a6; --danger:#dc2626;
+  --line:#e2e8f0; --primary:#0f766e; --link:#0f766e; --primary-ink:#fff; --accent:#14b8a6; --danger:#dc2626;
   --warn:#d97706; --done:#16a34a; --chart:#0d9488; --radius:14px; --shadow:0 1px 2px rgba(15,23,42,.06),0 2px 8px rgba(15,23,42,.05);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0b1220; --surface:#121a2b; --surface2:#1a2438; --text:#e5e9f0; --muted:#94a3b8;
-    --line:#243049; --primary:#14b8a6; --primary-ink:#04201d; --accent:#2dd4bf; --danger:#f87171;
+    --line:#243049; --primary:#14b8a6; --link:#2dd4bf; --primary-ink:#04201d; --accent:#2dd4bf; --danger:#f87171;
     --warn:#fbbf24; --done:#22c55e; --chart:#12a594; --shadow:none;
   }
 }
@@ -27,10 +27,11 @@
 html,body{margin:0}
 body{background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   padding-bottom:calc(72px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
-header{position:sticky;top:0;z-index:5;background:var(--primary);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+header{position:sticky;top:0;z-index:5;background:var(--primary);color:var(--primary-ink);padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
   display:flex;align-items:center;gap:10px;min-height:56px}
 header h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-header button{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:10px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer}
+header .hlogo{width:30px;height:30px;border-radius:8px;object-fit:cover;flex:none}
+header button{background:color-mix(in srgb,currentColor 16%,transparent);color:inherit;border:0;border-radius:10px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer}
 header .saving{font-size:12px;opacity:.85}
 main{max-width:720px;margin:0 auto;padding:16px}
 nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);display:flex;
@@ -38,7 +39,7 @@ nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:
 nav[hidden]{display:none}
 nav button{flex:1;background:none;border:0;color:var(--muted);font:inherit;font-size:12px;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;cursor:pointer}
 nav button span{font-size:20px}
-nav button.on{color:var(--primary);font-weight:600}
+nav button.on{color:var(--link);font-weight:600}
 nav .badge{position:absolute;top:4px;left:calc(50% + 6px)}
 .badge{background:var(--danger);color:#fff;border-radius:99px;font-size:11px;font-weight:700;padding:1px 6px;line-height:16px}
 h2{font-size:20px;margin:0}
@@ -54,13 +55,13 @@ button.card{cursor:pointer}
 .row{display:flex;align-items:center;gap:12px}
 .grow{flex:1;min-width:0}
 .chev{color:var(--muted);font-size:22px}
-.avatar{width:42px;height:42px;border-radius:50%;background:var(--surface2);color:var(--primary);display:grid;place-items:center;font-weight:700;flex:none}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--surface2);color:var(--link);display:grid;place-items:center;font-weight:700;flex:none}
 .btn{display:inline-block;text-align:center;text-decoration:none;background:var(--surface2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font:inherit;font-size:15px;cursor:pointer}
 .btn.primary{background:var(--primary);color:var(--primary-ink);border-color:transparent;font-weight:600}
 .btn.danger{color:var(--danger)}
 .btn.block{display:block;width:100%;margin-bottom:10px}
 .btn:disabled{opacity:.5}
-.link{background:none;border:0;color:var(--primary);font:inherit;font-size:14px;padding:6px 0;cursor:pointer}
+.link{background:none;border:0;color:var(--link);font:inherit;font-size:14px;padding:6px 0;cursor:pointer}
 .icon{background:var(--surface2);border:0;color:var(--text);width:34px;height:34px;border-radius:10px;font-size:16px;flex:none;cursor:pointer}
 input,textarea,select{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 textarea{min-height:80px;resize:vertical}
@@ -81,7 +82,7 @@ label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
 .video{margin-top:10px;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/9}
 .video iframe,.video video{width:100%;height:100%;border:0;display:block}
 .video.pending{background:var(--surface2);aspect-ratio:auto}
-.video.pending button{width:100%;padding:14px;background:none;border:0;color:var(--primary);font:inherit;font-weight:600;cursor:pointer}
+.video.pending button{width:100%;padding:14px;background:none;border:0;color:var(--link);font:inherit;font-weight:600;cursor:pointer}
 .presc{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .presc span{background:var(--surface2);border-radius:8px;padding:4px 9px;font-size:13px;font-weight:600}
 .obs{background:color-mix(in srgb,var(--accent) 12%,transparent);border-left:3px solid var(--accent);padding:8px 10px;border-radius:8px;margin:10px 0 0;font-size:14px}
@@ -95,7 +96,7 @@ label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
 .progress{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden;margin:6px 0 14px}
 .progress i{display:block;height:100%;background:var(--done);transition:width .3s}
 details{margin-top:8px;font-size:14px}
-summary{color:var(--primary);cursor:pointer}
+summary{color:var(--link);cursor:pointer}
 table{width:100%;border-collapse:collapse;margin-top:6px;font-size:14px}
 td{padding:6px 4px;border-bottom:1px solid var(--line)}
 td:last-child{text-align:right;white-space:nowrap}
@@ -125,11 +126,15 @@ dialog::backdrop{background:rgba(2,6,23,.55)}
 #timer button{background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:12px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer}
 #toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100vw - 32px)}
 #toast.show{opacity:1}
-.hello{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border-radius:var(--radius);padding:18px;margin-bottom:14px}
-.hello h2{color:#fff}
-.hello small{color:rgba(255,255,255,.88)}
+.hello{background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 70%,var(--accent)));color:var(--primary-ink);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.hello h2{color:inherit}
+.hello small{color:inherit;opacity:.88}
 .auth{max-width:420px;margin:24px auto 0}
-.auth .logo{width:72px;height:72px;margin:0 auto 10px;display:block}
+.auth .logo{width:84px;height:84px;margin:0 auto 12px;display:block;border-radius:22px;object-fit:cover}
+.auth .logo.wide{width:auto;max-width:min(240px,80%);height:auto;max-height:96px;border-radius:0;object-fit:contain}
+.auth .slogan{text-align:center;color:var(--muted);margin:4px 0 0}
+.social{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0 0}
+.social a{display:inline-flex;align-items:center;gap:6px;color:var(--link);text-decoration:none;font-size:14px;font-weight:600;padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:var(--surface)}
 .auth h2{text-align:center}
 .auth .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface2);padding:4px;border-radius:12px;margin:18px 0 6px}
 .auth .tabs button{border:0;background:none;padding:9px;border-radius:9px;font:inherit;color:var(--muted);cursor:pointer}
@@ -160,7 +165,7 @@ dialog::backdrop{background:rgba(2,6,23,.55)}
 .grid2 input{padding:8px}
 .nodesc{font-size:12px;color:var(--muted);padding:10px 0;text-align:center;line-height:1.2}
 .group{border:2px dashed color-mix(in srgb,var(--accent) 60%,transparent);border-radius:calc(var(--radius) + 6px);padding:10px 8px 0;margin-bottom:12px}
-.group-h{font-size:13px;font-weight:700;color:var(--primary);margin:0 6px 8px}
+.group-h{font-size:13px;font-weight:700;color:var(--link);margin:0 6px 8px}
 .group .card{margin-bottom:8px}
 label.checkrow{display:flex;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);margin:0;color:var(--text);font-size:15px;cursor:pointer}
 label.checkrow input{width:22px;height:22px;flex:none;accent-color:var(--primary)}
@@ -210,6 +215,7 @@ label.photoslot{display:flex;flex-direction:column;align-items:center;justify-co
 <div id="timer" hidden></div>
 <div id="toast"></div>
 
+<script src="marca.js"></script>
 <script src="config.js"></script>
 <script>
   // Captura o link de recuperação de senha antes do Supabase limpar o endereço.
@@ -234,7 +240,45 @@ const parseLoad = s => { const m = String(s || '').replace(',', '.').match(/\d+(
 const fmtNum = n => (Math.round(n * 10) / 10).toLocaleString('pt-BR');
 const baseUrl = () => location.href.split('#')[0].split('?')[0];
 const CFG = window.APP_CONFIG || {};
-const APP_NAME = CFG.APP_NAME || 'Meu Personal';
+const MARCA = window.MARCA || {};
+const APP_NAME = MARCA.nome || CFG.APP_NAME || 'Meu Personal';
+
+/* ===================== marca: cores e logo ===================== */
+function hexRgb(h) { h = String(h || '').replace('#', ''); if (h.length === 3) h = h.replace(/./g, c => c + c); const n = parseInt(h, 16); return isNaN(n) || h.length !== 6 ? null : [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+const rgbHex = c => '#' + c.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+function lum(c) { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); }
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+const inkFor = c => contrast(c, [255, 255, 255]) >= contrast(c, [15, 23, 42]) ? '#ffffff' : '#0f172a';
+// Ajusta a cor (escurecendo ou clareando) até ter contraste mínimo com o fundo.
+function readableOn(c, bg, min = 4.5) { const to = lum(bg) > .4 ? [0, 0, 0] : [255, 255, 255]; let t = 0, v = c; while (contrast(v, bg) < min && t < 1) { t += .05; v = mix(c, to, t); } return v; }
+// No modo escuro a cor da marca é clareada até se destacar do fundo escuro.
+const darkVariant = c => readableOn(c, [18, 26, 43], 3);
+function applyBrand() {
+  document.title = APP_NAME;
+  const p = hexRgb(MARCA.corPrincipal), a = hexRgb(MARCA.corDestaque) || p;
+  if (!p) return;
+  const pd = darkVariant(p), ad = darkVariant(a);
+  // contra o fundo mais exigente de cada tema (cinza claro / cartão escuro)
+  const linkL = readableOn(p, [238, 242, 245]), linkD = readableOn(pd, [26, 36, 56]);
+  const css = `:root{--primary:${rgbHex(p)};--primary-ink:${inkFor(p)};--accent:${rgbHex(a)};--link:${rgbHex(linkL)}}
+    @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--primary:${rgbHex(pd)};--primary-ink:${inkFor(pd)};--accent:${rgbHex(ad)};--link:${rgbHex(linkD)}}}`;
+  const st = document.createElement('style'); st.id = 'brandStyle'; st.textContent = css; document.head.appendChild(st);
+  const mt = document.querySelector('meta[name=theme-color]'); if (mt) mt.content = rgbHex(p);
+}
+applyBrand();
+// Na tela de entrada mostra o logo inteiro; no topo usa o ícone quadrado.
+function brandLogo(cls) {
+  const src = cls === 'logo' && MARCA.logo ? MARCA.logo : 'icon-192.png';
+  return `<img class="${cls}${src === MARCA.logo ? ' wide' : ''}" src="${esc(src)}" alt="${esc(APP_NAME)}">`;
+}
+const waLink = (text = '') => MARCA.whatsapp ? `https://wa.me/${String(MARCA.whatsapp).replace(/\D/g, '')}${text ? '?text=' + encodeURIComponent(text) : ''}` : '';
+const igLink = () => MARCA.instagram ? `https://www.instagram.com/${String(MARCA.instagram).replace(/^@/, '')}/` : '';
+function socialLinks(waText) {
+  const ig = igLink(), wa = waLink(waText);
+  if (!ig && !wa) return '';
+  return `<div class="social">${ig ? `<a href="${esc(ig)}" target="_blank" rel="noopener">📸 @${esc(String(MARCA.instagram).replace(/^@/, ''))}</a>` : ''}${wa ? `<a href="${esc(wa)}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}</div>`;
+}
 
 const store = {
   mem: {},
@@ -455,7 +499,7 @@ async function loadStudent() {
 function authShell(inner) {
   $('#tabs').hidden = true;
   $('#top').innerHTML = `<h1>${esc(APP_NAME)}</h1>`;
-  $('#app').innerHTML = `<div class="auth"><img class="logo" src="icon.svg" alt="">${inner}</div>`;
+  $('#app').innerHTML = `<div class="auth">${brandLogo('logo')}${inner}</div>`;
 }
 function renderSetup() {
   authShell(`<h2>Falta configurar</h2>
@@ -465,7 +509,8 @@ function renderAuth() {
   const inv = store.get('mp_invite', null);
   const signup = authTab === 'signup', forgot = authTab === 'forgot';
   authShell(`
-    <h2>${forgot ? 'Recuperar senha' : 'Bem-vindo(a)!'}</h2>
+    <h2>${forgot ? 'Recuperar senha' : esc(APP_NAME)}</h2>
+    ${!forgot && MARCA.slogan ? `<p class="slogan">${esc(MARCA.slogan)}</p>` : ''}
     ${inv ? `<div class="msg info">🎉 Você recebeu um convite de treino (código <b>${esc(inv)}</b>). ${signup ? 'Crie sua conta' : 'Crie sua conta ou entre'} para ver seu treino.</div>` : ''}
     ${forgot ? '' : `<div class="tabs"><button class="${!signup ? 'on' : ''}" data-act="authTab" data-k="login">Entrar</button><button class="${signup ? 'on' : ''}" data-act="authTab" data-k="signup">Criar conta</button></div>`}
     ${authMsg ? `<div class="msg ${authMsg.err ? 'err' : 'info'}">${esc(authMsg.text)}</div>` : ''}
@@ -474,7 +519,8 @@ function renderAuth() {
       ${forgot ? '' : `<label>Senha</label><input name="password" type="password" minlength="6" autocomplete="${signup ? 'new-password' : 'current-password'}" required>`}
       <button class="btn primary block" style="margin-top:16px">${forgot ? 'Enviar link de recuperação' : signup ? 'Criar conta' : 'Entrar'}</button>
     </form>
-    ${forgot ? `<button class="link" data-act="authTab" data-k="login">‹ Voltar</button>` : `<button class="link" data-act="authTab" data-k="forgot">Esqueci minha senha</button>`}`);
+    ${forgot ? `<button class="link" data-act="authTab" data-k="login">‹ Voltar</button>` : `<button class="link" data-act="authTab" data-k="forgot">Esqueci minha senha</button>`}
+    ${forgot ? '' : socialLinks('Olá! Vim pelo app e quero saber mais sobre o acompanhamento.')}`);
   $('#authForm').onsubmit = async e => {
     e.preventDefault();
     const f = e.target, btn = f.querySelector('button'); btn.disabled = true;
@@ -543,7 +589,7 @@ function render() {
   else if (v.name === 'exercises') { title = 'Biblioteca de exercícios'; html = vExercises(); }
   else if (v.name === 'settings') { title = 'Ajustes'; html = vSettings(); }
   else { S.view = { name: 'students' }; return render(); }
-  $('#top').innerHTML = `${back ? `<button data-act="back">‹ Voltar</button>` : ''}<h1>${esc(title)}</h1>${v.name === 'plan' || v.name === 'template' ? '<span class="saving" id="saving"></span>' : ''}`;
+  $('#top').innerHTML = `${back ? `<button data-act="back">‹ Voltar</button>` : brandLogo('hlogo')}<h1>${esc(title)}</h1>${v.name === 'plan' || v.name === 'template' ? '<span class="saving" id="saving"></span>' : ''}`;
   $('#top')._back = back;
   $('#app').innerHTML = html;
   const tab = ['students', 'student', 'plan', 'assess'].includes(v.name) ? 'students' : v.name === 'template' ? 'templates' : v.name;
@@ -694,7 +740,7 @@ function logCard(l, withName) {
 }
 function inviteLink(s) { return baseUrl() + '#convite=' + s.invite_code; }
 function inviteMsg(s) {
-  return `Olá ${s.name.split(' ')[0]}! Seu treino está pronto no app 💪\n\n1. Abra: ${inviteLink(s)}\n2. Toque em “Criar conta” e cadastre seu e-mail e uma senha.\n\nSe pedir, seu código é: ${s.invite_code}`;
+  return `Olá ${s.name.split(' ')[0]}! Seu treino está pronto no app ${APP_NAME} 💪\n\n1. Abra: ${inviteLink(s)}\n2. Toque em “Criar conta” e cadastre seu e-mail e uma senha.\n\nSe pedir, seu código é: ${s.invite_code}`;
 }
 function vStudent(s) {
   const plans = plansOf(s.id).map(p => `
@@ -1211,7 +1257,7 @@ function renderStudentApp() {
   $('#tabs').innerHTML = [['treino', '🏋️', 'Treino'], ['avaliacao', '📏', 'Avaliação'], ['historico', '📅', 'Histórico'], ['conta', '👤', 'Conta']]
     .map(([k, i, l]) => { const n = k === 'historico' && v !== 'historico' ? newReplies().length : 0;
       return `<button class="${v === k ? 'on' : ''}" data-act="tab" data-k="${k}"><span>${i}</span>${l}${n ? `<b class="badge">${n}</b>` : ''}</button>`; }).join('');
-  $('#top').innerHTML = `<h1>${v === 'historico' ? 'Meu histórico' : v === 'conta' ? 'Minha conta' : v === 'avaliacao' ? 'Minha avaliação' : 'Meu treino'}</h1>`;
+  $('#top').innerHTML = `${brandLogo('hlogo')}<h1>${v === 'historico' ? 'Meu histórico' : v === 'conta' ? 'Minha conta' : v === 'avaliacao' ? 'Minha avaliação' : 'Meu treino'}</h1>`;
   const off = S.offline ? `<div class="offline">Sem internet — mostrando o último treino salvo</div>` : '';
   const pend = store.get('mp_pending_' + S.user.id, []).length;
   const pendHtml = pend ? `<div class="offline">${pend} treino(s) aguardando internet para enviar ao personal</div>` : '';
@@ -1225,7 +1271,8 @@ function renderStudentApp() {
   if (v === 'conta') {
     $('#app').innerHTML = `<div class="card"><div class="row"><div class="avatar">${esc(initials(S.me.name))}</div>
       <div class="grow"><h3>${esc(S.me.name)}</h3><small>${esc(S.user.email)}</small></div></div>
-      <p class="muted" style="margin:10px 0 0">Personal: <b>${esc(S.me.trainer_name || '—')}</b>${S.me.goal ? `<br>Objetivo: ${esc(S.me.goal)}` : ''}</p></div>
+      <p class="muted" style="margin:10px 0 0">Personal: <b>${esc(S.me.trainer_name || '—')}</b>${S.me.goal ? `<br>Objetivo: ${esc(S.me.goal)}` : ''}</p>
+      ${socialLinks(`Olá! Aqui é ${S.me.name.split(' ')[0]}, aluno(a) pelo app.`)}</div>
       ${notifCard()}
       <button class="btn block" data-act="reload">🔄 Atualizar treino</button>
       <button class="btn block" data-act="logout">Sair da conta</button>`;

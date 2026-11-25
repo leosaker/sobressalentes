@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Criar marca do app</title>
+<style>
+:root{--bg:#f4f6f8;--surface:#fff;--surface2:#eef2f5;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--primary:#0f766e;--ok:#15803d;--warn:#b45309}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0b1220;--surface:#121a2b;--surface2:#1a2438;--text:#e5e9f0;--muted:#94a3b8;--line:#243049;--primary:#14b8a6;--ok:#4ade80;--warn:#fbbf24}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:26px;margin:0 0 4px}
+.lead{color:var(--muted);margin:0 0 18px}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
+@media (max-width:780px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+.card h2{font-size:17px;margin:0 0 4px}
+label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:12px 0 4px}
+input,select{width:100%;font:inherit;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+input[type=color]{height:44px;padding:4px;cursor:pointer}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+small{display:block;color:var(--muted);font-size:12.5px;margin-top:4px}
+button{font:inherit;border:0;border-radius:12px;padding:12px 16px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer;width:100%}
+button.sec{background:var(--surface2);color:var(--text);font-weight:600}
+.sticky{position:sticky;top:16px}
+/* prévia do celular */
+.phone{border-radius:34px;background:#0b1220;padding:9px;box-shadow:0 12px 30px rgba(15,23,42,.18)}
+.screen{border-radius:26px;overflow:hidden;background:#f4f6f8;height:520px;display:flex;flex-direction:column;color:#0f172a}
+.pv-top{display:flex;align-items:center;gap:10px;padding:14px 14px 12px;font-weight:700;font-size:15px}
+.pv-top img{width:28px;height:28px;border-radius:7px}
+.pv-body{padding:18px 16px;text-align:center;flex:1}
+.pv-logo{width:76px;height:76px;object-fit:contain;border-radius:18px;margin:6px auto 10px;display:block}
+.pv-body h3{margin:0;font-size:19px}
+.pv-body p{color:#64748b;font-size:13px;margin:4px 0 14px}
+.pv-in{height:38px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;margin:8px 0}
+.pv-btn{height:42px;border-radius:12px;margin-top:12px;display:grid;place-items:center;font-weight:700;font-size:14px}
+.pv-hello{border-radius:14px;padding:14px;text-align:left;margin-top:14px}
+.pv-hello b{display:block;font-size:15px}
+.pv-hello span{font-size:12px;opacity:.88}
+.icons{display:flex;gap:14px;align-items:flex-end;margin-top:14px}
+.icons figure{margin:0;text-align:center;font-size:11px;color:var(--muted)}
+.icons canvas{display:block;border-radius:22%;box-shadow:0 2px 8px rgba(15,23,42,.15)}
+.check{font-size:13px;margin-top:10px}
+.ok{color:var(--ok)}.warn{color:var(--warn)}
+ol{padding-left:20px;margin:8px 0 0}
+li{margin:4px 0}
+code{font-size:13px;background:var(--surface2);padding:1px 5px;border-radius:5px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Criar marca do app</h1>
+  <p class="lead">Personalize o app para um professor: nome, logo, cores e contatos. No final você baixa um pacote <b>.zip</b> com os arquivos prontos. Nada é enviado para a internet.</p>
+  <div class="wrap">
+    <div>
+      <div class="card">
+        <h2>Identidade</h2>
+        <label for="nome">Nome do app</label><input id="nome" maxlength="40" placeholder="Ex.: João Silva Personal">
+        <div class="row2">
+          <div><label for="nomeCurto">Nome curto (embaixo do ícone)</label><input id="nomeCurto" maxlength="12" placeholder="Ex.: João Silva"></div>
+          <div><label for="monograma">Monograma (sem logo)</label><input id="monograma" maxlength="3" placeholder="Ex.: JS"></div>
+        </div>
+        <label for="slogan">Frase da tela de entrada</label><input id="slogan" maxlength="80" placeholder="Ex.: Treino personalizado com acompanhamento de perto">
+      </div>
+      <div class="card">
+        <h2>Cores e logo</h2>
+        <div class="row2">
+          <div><label for="corPrincipal">Cor principal</label><input type="color" id="corPrincipal" value="#0f766e"></div>
+          <div><label for="corDestaque">Cor de destaque</label><input type="color" id="corDestaque" value="#14b8a6"></div>
+        </div>
+        <div class="check" id="contrastMsg"></div>
+        <label for="logo">Logo (PNG, JPG ou SVG — opcional)</label><input type="file" id="logo" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+        <small>Use o logo com fundo transparente, se tiver. Sem logo, o app usa o monograma.</small>
+        <label for="fundo">Fundo do ícone do app</label>
+        <select id="fundo"><option value="marca">Cor principal</option><option value="branco">Branco</option><option value="preto">Preto</option></select>
+        <div class="icons">
+          <figure><canvas id="pvIcon" width="96" height="96"></canvas>Ícone</figure>
+          <figure><canvas id="pvIconSm" width="48" height="48"></canvas>Pequeno</figure>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Contatos</h2>
+        <div class="row2">
+          <div><label for="instagram">Instagram (só o @)</label><input id="instagram" placeholder="joaosilvapersonal"></div>
+          <div><label for="whatsapp">WhatsApp com DDD</label><input id="whatsapp" inputmode="tel" placeholder="(11) 99999-8888"></div>
+        </div>
+        <small>Aparecem na tela de entrada e na conta do aluno.</small>
+      </div>
+      <button id="baixar">⬇️ Baixar pacote da marca (.zip)</button>
+      <div class="card" style="margin-top:16px">
+        <h2>Como aplicar</h2>
+        <ol>
+          <li>Descompacte o .zip.</li>
+          <li>Copie os arquivos para a pasta do app (a mesma do <code>index.html</code>), substituindo os que já existem.</li>
+          <li>Publique o app de novo (ex.: arraste a pasta no Netlify Drop).</li>
+          <li>Quem já instalou o app vê a marca nova ao abrir. O ícone na tela inicial pode demorar a trocar; se não mudar, remova e adicione de novo.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="sticky">
+      <div class="phone"><div class="screen">
+        <div class="pv-top" id="pvTop"><img id="pvTopIcon" alt=""><span id="pvTopName"></span></div>
+        <div class="pv-body">
+          <img class="pv-logo" id="pvLogo" alt="">
+          <h3 id="pvName"></h3><p id="pvSlogan"></p>
+          <div class="pv-in"></div><div class="pv-in"></div>
+          <div class="pv-btn" id="pvBtn">Entrar</div>
+          <div class="pv-hello" id="pvHello"><b>Olá, Maria! 💪</b><span>Seu treino de hoje está pronto</span></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</main>
+<script src="../marca.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const FIELDS = ['nome', 'nomeCurto', 'monograma', 'slogan', 'corPrincipal', 'corDestaque', 'instagram', 'whatsapp'];
+let logoImg = null, logoBlob = null;
+
+// ---------- cores ----------
+const hexRgb = h => { h = h.replace('#', ''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const lum = c => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+const inkFor = hex => contrast(hexRgb(hex), [255, 255, 255]) >= contrast(hexRgb(hex), [15, 23, 42]) ? '#ffffff' : '#0f172a';
+const iconBg = () => ({ marca: $('corPrincipal').value, branco: '#ffffff', preto: '#0b0b0b' })[$('fundo').value];
+
+// ---------- ícones ----------
+function drawIcon(size, opts = {}) {
+  const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d');
+  const bg = opts.transparent ? null : iconBg();
+  if (bg) { g.fillStyle = bg; g.fillRect(0, 0, size, size); }
+  if (logoImg && !opts.mono) {
+    const box = size * 0.66, r = Math.min(box / logoImg.width, box / logoImg.height), w = logoImg.width * r, h = logoImg.height * r;
+    g.drawImage(logoImg, (size - w) / 2, (size - h) / 2, w, h);
+  } else {
+    const t = ($('monograma').value || initials()).toUpperCase().slice(0, 3);
+    g.fillStyle = opts.transparent ? '#ffffff' : inkFor(bg);
+    g.font = `700 ${Math.round(size * (t.length <= 2 ? 0.42 : 0.32) * (opts.transparent ? 0.85 : 1))}px system-ui, -apple-system, "Segoe UI", Arial, sans-serif`;
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t, size / 2, size / 2 + size * 0.025);
+  }
+  return c;
+}
+const initials = () => ($('nome').value || 'App').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('');
+const toBlob = c => new Promise(r => c.toBlob(r, 'image/png'));
+function paste(target, src) { const g = target.getContext('2d'); g.clearRect(0, 0, target.width, target.height); g.drawImage(src, 0, 0, target.width, target.height); }
+
+// ---------- prévia ----------
+function preview() {
+  const p = $('corPrincipal').value, a = $('corDestaque').value, ink = inkFor(p);
+  const icon = drawIcon(192);
+  paste($('pvIcon'), icon); paste($('pvIconSm'), icon);
+  $('pvTop').style.background = p; $('pvTop').style.color = ink;
+  $('pvTopIcon').src = icon.toDataURL(); $('pvTopName').textContent = $('nome').value || 'Nome do app';
+  $('pvLogo').src = logoImg ? logoImg.src : icon.toDataURL();
+  $('pvName').textContent = $('nome').value || 'Nome do app'; $('pvSlogan').textContent = $('slogan').value;
+  $('pvBtn').style.background = p; $('pvBtn').style.color = ink;
+  $('pvHello').style.background = `linear-gradient(135deg, ${p}, color-mix(in srgb, ${p} 70%, ${a}))`; $('pvHello').style.color = ink;
+  const cr = contrast(hexRgb(p), hexRgb(ink));
+  $('contrastMsg').innerHTML = cr >= 4.5 ? `<span class="ok">✓ Texto legível sobre a cor principal (contraste ${cr.toFixed(1)}:1).</span>`
+    : `<span class="warn">⚠ Contraste baixo (${cr.toFixed(1)}:1). Os textos sobre essa cor podem ficar difíceis de ler — prefira um tom mais escuro ou mais claro.</span>`;
+}
+
+// ---------- logo ----------
+$('logo').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) { logoImg = null; logoBlob = null; return preview(); }
+  const url = URL.createObjectURL(f);
+  logoImg = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+  const max = 512, sc = Math.min(1, max / Math.max(logoImg.width || max, logoImg.height || max));
+  const c = document.createElement('canvas'); c.width = Math.round((logoImg.width || max) * sc); c.height = Math.round((logoImg.height || max) * sc);
+  c.getContext('2d').drawImage(logoImg, 0, 0, c.width, c.height);
+  logoBlob = await toBlob(c);
+  preview();
+});
+
+// ---------- ZIP (sem compressão, sem bibliotecas) ----------
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+    const h = new DataView(new ArrayBuffer(30));
+    [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [8, 0, 2], [10, 0, 2], [12, 0x21, 2], [14, crc, 4], [18, size, 4], [22, size, 4], [26, name.length, 2], [28, 0, 2]]
+      .forEach(([o, v, n]) => n === 4 ? h.setUint32(o, v, true) : h.setUint16(o, v, true));
+    parts.push(new Uint8Array(h.buffer), name, f.data);
+    const c = new DataView(new ArrayBuffer(46));
+    [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [10, 0, 2], [12, 0, 2], [14, 0x21, 2], [16, crc, 4], [20, size, 4], [24, size, 4], [28, name.length, 2], [30, 0, 2], [32, 0, 2], [34, 0, 2], [36, 0, 2], [38, 0, 4], [42, off, 4]]
+      .forEach(([o, v, n]) => n === 4 ? c.setUint32(o, v, true) : c.setUint16(o, v, true));
+    central.push(new Uint8Array(c.buffer), name);
+    off += 30 + name.length + size;
+  }
+  const cdSize = central.reduce((a, x) => a + x.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cdSize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
+}
+
+// ---------- gerar pacote ----------
+function marcaJs(m) {
+  const q = v => JSON.stringify(v);
+  return `// =====================================================================
+// MARCA DO APP — tudo o que muda de um professor para outro fica aqui.
+// Gerado em ferramentas/criar-marca.html. Para mudar, gere um pacote novo.
+// =====================================================================
+self.MARCA = {
+  nome: ${q(m.nome)},
+  nomeCurto: ${q(m.nomeCurto)},
+  slogan: ${q(m.slogan)},
+  corPrincipal: ${q(m.corPrincipal)},
+  corDestaque: ${q(m.corDestaque)},
+  logo: ${q(m.logo)},
+  monograma: ${q(m.monograma)},
+  instagram: ${q(m.instagram)},
+  whatsapp: ${q(m.whatsapp)}
+};
+`;
+}
+$('baixar').onclick = async () => {
+  const m = {};
+  FIELDS.forEach(k => m[k] = $(k).value.trim());
+  if (!m.nome) { alert('Preencha o nome do app.'); $('nome').focus(); return; }
+  m.nomeCurto ||= m.nome.slice(0, 12); m.monograma = (m.monograma || initials()).toUpperCase().slice(0, 3);
+  m.instagram = m.instagram.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/.*$/, '');
+  m.whatsapp = m.whatsapp.replace(/\D/g, ''); if (m.whatsapp && m.whatsapp.length <= 11) m.whatsapp = '55' + m.whatsapp;
+  m.logo = logoBlob ? 'logo.png' : '';
+  const manifest = { name: m.nome, short_name: m.nomeCurto, start_url: './', scope: './', display: 'standalone', background_color: '#0b1220', theme_color: m.corPrincipal, lang: 'pt-BR',
+    icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }] };
+  const enc = new TextEncoder(), bytes = async b => new Uint8Array(await b.arrayBuffer());
+  const files = [
+    { name: 'marca.js', data: enc.encode(marcaJs(m)) },
+    { name: 'manifest.json', data: enc.encode(JSON.stringify(manifest, null, 2)) },
+    { name: 'icon-192.png', data: await bytes(await toBlob(drawIcon(192))) },
+    { name: 'icon-512.png', data: await bytes(await toBlob(drawIcon(512))) },
+    { name: 'apple-touch-icon.png', data: await bytes(await toBlob(drawIcon(180))) },
+    { name: 'badge-96.png', data: await bytes(await toBlob(drawIcon(96, { mono: true, transparent: true }))) }
+  ];
+  if (logoBlob) files.push({ name: 'logo.png', data: await bytes(logoBlob) });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(makeZip(files));
+  a.download = 'marca-' + (m.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'app') + '.zip';
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
+// ---------- iniciar com a marca atual ----------
+const M = window.MARCA || {};
+FIELDS.forEach(k => { if (M[k]) $(k).value = M[k]; });
+if (M.logo) { const i = new Image(); i.onload = () => { logoImg = i; fetch('../' + M.logo).then(r => r.blob()).then(b => { logoBlob = b; }).catch(() => {}); preview(); }; i.src = '../' + M.logo; }
+document.addEventListener('input', preview); $('fundo').addEventListener('change', preview);
+preview();
+</script>
+</body>
+</html>
