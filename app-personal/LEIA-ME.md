@@ -20,6 +20,9 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
   Também dá para usar "Salvar como modelo" dentro de um treino, ou escolher um modelo em "+ Novo treino"
 - **Bi-set, tri-set e circuito**: use "🔗 Juntar com o anterior". Os exercícios aparecem agrupados (2A, 2B…)
   e o descanso só começa no fim do grupo
+- **Técnicas marcadas**: drop-set, rest-pause, pirâmide, até a falha, excêntrica lenta e pico de contração.
+  O aluno vê a técnica em destaque com a explicação. Na pirâmide, escreva as reps por série (ex.: 15-12-10-8)
+  e cada série mostra as suas repetições
 - **Três tipos de exercício**: 🔁 séries × repetições, ⏱ por tempo (ex.: prancha 30 s) e 🏃 cardio
   (ex.: esteira 20 min, com intensidade). Cada exercício da biblioteca tem um tipo padrão
 

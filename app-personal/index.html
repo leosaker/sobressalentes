@@ -165,6 +165,13 @@ dialog::backdrop{background:rgba(2,6,23,.55)}
 label.checkrow{display:flex;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);margin:0;color:var(--text);font-size:15px;cursor:pointer}
 label.checkrow input{width:22px;height:22px;flex:none;accent-color:var(--primary)}
 #timer.work{background:rgba(4,64,56,.96)}
+.techrow{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+.techrow label{margin:0;white-space:nowrap}
+.techrow select{padding:8px 10px}
+.presc span.tech{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.obs.techinfo{border-left-color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.setwrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+.setwrap small{font-size:11px;font-weight:600}
 .offline{background:var(--warn);color:#000;text-align:center;font-size:13px;padding:6px;border-radius:10px;margin-bottom:12px}
 @media (max-width:380px){.grid4{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -649,6 +656,16 @@ function vStudent(s) {
 }
 
 /* ---------- modos do exercício e bi-sets ---------- */
+const TECHS = [
+  ['', 'Nenhuma', ''],
+  ['dropset', 'Drop-set', 'Na última série, ao chegar na falha, reduza a carga em 20–30% e continue sem descansar.'],
+  ['restpause', 'Rest-pause', 'Ao chegar na falha, descanse 10–15 segundos e faça mais repetições com a mesma carga. Repita 2–3 vezes.'],
+  ['piramide', 'Pirâmide', 'A cada série, aumente a carga e diminua as repetições.'],
+  ['falha', 'Até a falha', 'Faça repetições até não conseguir mais com boa execução.'],
+  ['excentrica', 'Excêntrica lenta', 'Na volta do movimento (descida), vá bem devagar: 3 a 5 segundos.'],
+  ['isometria', 'Pico de contração', 'Segure 2 segundos na posição de maior contração em cada repetição.']
+];
+const techOf = it => TECHS.find(t => t[0] === (it.tech || '') && t[0]) || null;
 const MODES = [['reps', '🔁 Reps'], ['time', '⏱ Tempo'], ['cardio', '🏃 Cardio']];
 const modeOf = it => (it && it.mode) || 'reps';
 const nSets = it => modeOf(it) === 'cardio' ? 1 : Math.min(Math.max(parseInt(it.sets) || 3, 1), 12);
@@ -687,7 +704,7 @@ function vPlan(s, p, tpl = false) {
           <div><label>Séries</label><input inputmode="numeric" data-i="${i}" data-f="sets" value="${esc(it.sets)}"></div>
           ${m === 'time'
             ? `<div><label>Tempo (s)</label><input inputmode="numeric" data-i="${i}" data-f="dur" value="${esc(it.dur)}" placeholder="30"></div>`
-            : `<div><label>Reps</label><input data-i="${i}" data-f="reps" value="${esc(it.reps)}" placeholder="12"></div>`}
+            : `<div><label>Reps</label><input data-i="${i}" data-f="reps" value="${esc(it.reps)}" placeholder="12 ou 15-12-10"></div>`}
           <div><label>Carga</label><input data-i="${i}" data-f="load" value="${esc(it.load)}" placeholder="kg"></div>
           ${restCell}
         </div>`;
@@ -701,7 +718,8 @@ function vPlan(s, p, tpl = false) {
       </div>
       <div class="seg">${MODES.map(([k, l]) => `<button class="${m === k ? 'on' : ''}" data-act="setMode" data-i="${i}" data-m="${k}">${l}</button>`).join('')}</div>
       ${grid}
-      <input data-i="${i}" data-f="obs" value="${esc(it.obs)}" placeholder="Observação (ex.: cadência 3-0-1, drop-set na última)">
+      ${m === 'cardio' ? '' : `<div class="techrow"><label>Técnica</label><select data-i="${i}" data-f="tech">${TECHS.map(([k, l]) => `<option value="${k}" ${(it.tech || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`}
+      <input data-i="${i}" data-f="obs" value="${esc(it.obs)}" placeholder="Observação (ex.: cadência 3-0-1, ${m === 'reps' ? 'pegada aberta' : 'apoio nos joelhos'})">
       ${i > 0 ? `<button class="link" data-act="toggleLink" data-i="${i}">${it.link ? '✂️ Separar do exercício anterior' : '🔗 Juntar com o anterior (bi-set / circuito)'}</button>` : ''}
     </div>`;
   };
@@ -922,16 +940,23 @@ function renderStudentApp() {
     const n = nSets(it), done = pr.done[i] || [];
     const load = pr.loads[i] ?? (lastLoad(P, ex.name) || it.load || '');
     const rest = isLastInBlock(P.items, i) ? parseInt(it.rest) || 0 : 0;
+    const tech = m === 'cardio' ? null : techOf(it);
     const presc = m === 'cardio'
       ? `<span>🏃 ${esc(it.dur || '20')} min</span>${it.int ? `<span>${esc(it.int)}</span>` : ''}`
-      : `<span>${n} séries</span>${m === 'time' ? `<span>⏱ ${durSec(it)} s cada</span>` : `<span>${esc(it.reps || '-')} reps</span>`}${it.load ? `<span>🏋️ ${esc(it.load)}</span>` : ''}${rest ? `<span>💤 ${rest}s descanso</span>` : ''}`;
+      : `<span>${n} séries</span>${m === 'time' ? `<span>⏱ ${durSec(it)} s cada</span>` : `<span>${esc(it.reps || '-')} reps</span>`}${it.load ? `<span>🏋️ ${esc(it.load)}</span>` : ''}${rest ? `<span>💤 ${rest}s descanso</span>` : ''}${tech ? `<span class="tech">🔥 ${tech[1]}</span>` : ''}`;
+    const repsList = m === 'reps' ? String(it.reps || '').split(/\s*[-\/]\s*/).filter(Boolean) : [];
+    const perSet = n > 1 && repsList.length === n;
     const sets = m === 'cardio'
       ? `<button class="set ${done[0] ? 'done' : ''}" data-act="toggleSet" data-i="${i}" data-k="0" aria-label="Marcar como feito">✓</button>
          <button class="btn" data-act="startCardio" data-i="${i}">▶ Iniciar ${esc(it.dur || '20')}:00</button>`
-      : Array.from({ length: n }, (_, k) => `<button class="set ${done[k] ? 'done' : ''}" data-act="toggleSet" data-i="${i}" data-k="${k}" aria-label="Série ${k + 1}">${k + 1}</button>`).join('');
+      : Array.from({ length: n }, (_, k) => {
+          const b = `<button class="set ${done[k] ? 'done' : ''}" data-act="toggleSet" data-i="${i}" data-k="${k}" aria-label="Série ${k + 1}${perSet ? ', ' + esc(repsList[k]) + ' repetições' : ''}">${k + 1}</button>`;
+          return perSet ? `<div class="setwrap">${b}<small>${esc(repsList[k])} reps</small></div>` : b;
+        }).join('');
     return `<div class="card item ${done.filter(Boolean).length >= n ? 'complete' : ''}" id="it${i}">
       <h3>${lab[i]}. ${esc(ex.name)}</h3><small>${esc(ex.grp || '')}${m === 'time' ? ' · por tempo: toque na série para iniciar o cronômetro' : ''}</small>
       <div class="presc">${presc}</div>
+      ${tech ? `<p class="obs techinfo"><b>${tech[1]}:</b> ${esc(tech[2])}</p>` : ''}
       ${it.obs ? `<p class="obs">${esc(it.obs)}</p>` : ''}
       ${videoEmbed(ex.video) ? `<div class="video pending" id="v${i}"><button data-act="showVideo" data-i="${i}">▶ Ver vídeo de execução</button></div>` : ''}
       ${ex.notes ? `<details><summary>Como executar</summary><p style="margin:6px 0 0">${esc(ex.notes)}</p></details>` : ''}
@@ -1367,6 +1392,12 @@ document.addEventListener('input', e => {
   const { s, p } = cur();
   if (t.dataset.pf && p) { p[t.dataset.pf] = t.dataset.pf === 'ends_on' ? (t.value || null) : t.value; queuePlanSave(p); if (t.dataset.pf === 'name') $('#top h1').textContent = (s ? s.name + ' · ' : 'Modelo · ') + t.value; return; }
   if (t.dataset.f && p) { p.items[+t.dataset.i][t.dataset.f] = t.value; queuePlanSave(p); }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.tagName === 'SELECT' && t.dataset.f && S.role === 'trainer') {
+    const { p } = cur(); if (p && p.items[+t.dataset.i][t.dataset.f] !== t.value) { p.items[+t.dataset.i][t.dataset.f] = t.value; queuePlanSave(p); }
+  }
 });
 document.addEventListener('change', async e => {
   if (e.target.id !== 'importFile' || !e.target.files[0]) return;
