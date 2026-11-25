@@ -206,6 +206,27 @@ create policy logs_trainer_update on public.workout_logs for update to authentic
 revoke update on public.workout_logs from authenticated;
 grant update (trainer_seen, trainer_reply, replied_at) on public.workout_logs to authenticated;
 
+-- ---------- Versão 3: modelos de treino e tipo do exercício ----------
+create table if not exists public.templates (
+  id         uuid primary key default gen_random_uuid(),
+  trainer_id uuid not null default auth.uid() references public.trainers on delete cascade,
+  name       text not null,
+  focus      text not null default '',
+  items      jsonb not null default '[]',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists templates_trainer_idx on public.templates (trainer_id);
+
+alter table public.exercises add column if not exists kind text not null default 'reps'
+  check (kind in ('reps', 'time', 'cardio'));
+
+alter table public.templates enable row level security;
+revoke all on public.templates from anon;
+drop policy if exists templates_trainer on public.templates;
+create policy templates_trainer on public.templates for all to authenticated
+  using (trainer_id = auth.uid()) with check (trainer_id = auth.uid());
+
 -- ---------- SEU E-MAIL DE PERSONAL ----------
 -- Troque pelo e-mail que você vai usar para entrar como personal e rode esta linha:
 -- insert into public.trainer_allowlist (email) values ('seu-email@exemplo.com');

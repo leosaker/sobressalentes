@@ -16,10 +16,17 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
 - **Evolução de carga**: gráfico por exercício com as cargas que o aluno anotou (ex.: 30 kg → 42,5 kg, +42%)
 - **Validade do treino**: data de vencimento (padrão de 6 semanas, com atalhos de 4/6/8/12) e aviso de "treinos para renovar"
 - **Responder o aluno**: responda o comentário de cada treino; ele recebe o aviso no app
+- **Modelos de treino** (aba 📋 Modelos): monte uma vez e aplique em vários alunos com um toque.
+  Também dá para usar "Salvar como modelo" dentro de um treino, ou escolher um modelo em "+ Novo treino"
+- **Bi-set, tri-set e circuito**: use "🔗 Juntar com o anterior". Os exercícios aparecem agrupados (2A, 2B…)
+  e o descanso só começa no fim do grupo
+- **Três tipos de exercício**: 🔁 séries × repetições, ⏱ por tempo (ex.: prancha 30 s) e 🏃 cardio
+  (ex.: esteira 20 min, com intensidade). Cada exercício da biblioteca tem um tipo padrão
 
 **Aluno**
 - Login próprio, vídeo de execução em cada exercício
 - Marca as séries, o cronômetro de descanso começa sozinho (som + vibração)
+- Exercício por tempo: toca na série e o cronômetro de execução conta o tempo; no cardio, toca em "▶ Iniciar"
 - Anota a carga usada (o app lembra a do último treino)
 - Ao finalizar: nota de esforço (1–10) e comentário para o personal
 - Vê a resposta do personal, o próprio gráfico de evolução de carga e quando o treino vence
@@ -35,8 +42,8 @@ App de celular (PWA, instalável na tela inicial) para o personal montar as sér
    insert into public.trainer_allowlist (email) values ('seu-email@exemplo.com');
    ```
 
-> **Já tinha rodado o `schema.sql` antes desta versão?** Rode também `supabase/migracao-v2.sql`
-> (ou rode o `schema.sql` inteiro de novo, que não apaga nada). Isso adiciona a validade e as respostas.
+> **Já tinha rodado o `schema.sql` antes?** Rode também `supabase/migracao-v2.sql` e `supabase/migracao-v3.sql`
+> (ou rode o `schema.sql` inteiro de novo, que não apaga nada). Isso adiciona validade, respostas, modelos e tipos de exercício.
 
 ### 2. Ligar o app ao Supabase
 1. No Supabase, abra **Project Settings → API** (ou o botão **Connect**).

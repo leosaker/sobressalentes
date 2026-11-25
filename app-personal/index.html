@@ -152,6 +152,19 @@ dialog::backdrop{background:rgba(2,6,23,.55)}
 .chart .chips{margin:8px 0 0}
 .reply{background:var(--surface2);border-radius:10px;padding:8px 10px;margin-top:10px;font-size:14px}
 .reply p{margin:2px 0 0}
+.seg{display:inline-flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px;margin-top:10px}
+.seg button{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--text);font-weight:600;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin:10px 0 8px}
+.grid2 label{margin:0 0 3px}
+.grid2 input{padding:8px}
+.nodesc{font-size:12px;color:var(--muted);padding:10px 0;text-align:center;line-height:1.2}
+.group{border:2px dashed color-mix(in srgb,var(--accent) 60%,transparent);border-radius:calc(var(--radius) + 6px);padding:10px 8px 0;margin-bottom:12px}
+.group-h{font-size:13px;font-weight:700;color:var(--primary);margin:0 6px 8px}
+.group .card{margin-bottom:8px}
+label.checkrow{display:flex;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);margin:0;color:var(--text);font-size:15px;cursor:pointer}
+label.checkrow input{width:22px;height:22px;flex:none;accent-color:var(--primary)}
+#timer.work{background:rgba(4,64,56,.96)}
 .offline{background:var(--warn);color:#000;text-align:center;font-size:13px;padding:6px;border-radius:10px;margin-bottom:12px}
 @media (max-width:380px){.grid4{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -265,6 +278,10 @@ function makeApi(sb) {
 
     plans: studentId => { let q = sb.from('plans').select('*'); if (studentId) q = q.eq('student_id', studentId); return q.order('position').then(chk); },
     addPlan: p => sb.from('plans').insert(p).select().single().then(chk),
+    templates: () => sb.from('templates').select('*').order('name').then(chk),
+    addTemplate: t => sb.from('templates').insert(t).select().single().then(chk),
+    updateTemplate: (id, t) => sb.from('templates').update(t).eq('id', id).then(chk),
+    deleteTemplate: id => sb.from('templates').delete().eq('id', id).then(chk),
     updatePlan: (id, p) => sb.from('plans').update(p).eq('id', id).then(chk),
     deletePlan: id => sb.from('plans').delete().eq('id', id).then(chk),
 
@@ -287,7 +304,7 @@ const api = window.__TEST_API__ ||
 /* ===================== estado ===================== */
 const S = {
   user: null, role: null, trainer: null, me: null,
-  students: [], exercises: [], plans: [], logs: [],
+  students: [], exercises: [], plans: [], logs: [], templates: [],
   view: { name: 'loading' }, offline: false
 };
 const exById = id => S.exercises.find(e => e.id === id);
@@ -318,7 +335,7 @@ async function boot() {
   flushPending();
 }
 function resetState() {
-  Object.assign(S, { user: null, role: null, trainer: null, me: null, students: [], exercises: [], plans: [], logs: [], view: { name: 'loading' }, offline: false });
+  Object.assign(S, { user: null, role: null, trainer: null, me: null, students: [], exercises: [], plans: [], logs: [], templates: [], view: { name: 'loading' }, offline: false });
 }
 async function enter(user) {
   S.user = user;
@@ -360,7 +377,7 @@ async function enter(user) {
 }
 async function loadTrainer() {
   const since = new Date(Date.now() - 120 * 864e5).toISOString();
-  [S.students, S.exercises, S.plans, S.logs] = await Promise.all([api.students(), api.exercises(), api.plans(), api.logs({ since })]);
+  [S.students, S.exercises, S.plans, S.logs, S.templates] = await Promise.all([api.students(), api.exercises(), api.plans(), api.logs({ since }), api.templates()]);
 }
 async function loadStudent() {
   [S.plans, S.exercises, S.logs] = await Promise.all([api.plans(S.me.id), api.exercises(), api.logs({ studentId: S.me.id, limit: 200 })]);
@@ -450,17 +467,19 @@ function render() {
   if (v.name === 'students') html = vStudents();
   else if (v.name === 'student' && s) { title = s.name; back = { name: 'students' }; html = vStudent(s); }
   else if (v.name === 'plan' && s && p) { title = `${s.name} · ${p.name}`; back = { name: 'student', sid: s.id }; html = vPlan(s, p); }
+  else if (v.name === 'templates') { title = 'Modelos de treino'; html = vTemplates(); }
+  else if (v.name === 'template' && cur().p) { const t = cur().p; title = `Modelo · ${t.name}`; back = { name: 'templates' }; html = vPlan(null, t, true); }
   else if (v.name === 'feed') { title = 'Acompanhamento'; html = vFeed(); }
   else if (v.name === 'exercises') { title = 'Biblioteca de exercícios'; html = vExercises(); }
   else if (v.name === 'settings') { title = 'Ajustes'; html = vSettings(); }
   else { S.view = { name: 'students' }; return render(); }
-  $('#top').innerHTML = `${back ? `<button data-act="back">‹ Voltar</button>` : ''}<h1>${esc(title)}</h1>${v.name === 'plan' ? '<span class="saving" id="saving"></span>' : ''}`;
+  $('#top').innerHTML = `${back ? `<button data-act="back">‹ Voltar</button>` : ''}<h1>${esc(title)}</h1>${v.name === 'plan' || v.name === 'template' ? '<span class="saving" id="saving"></span>' : ''}`;
   $('#top')._back = back;
   $('#app').innerHTML = html;
-  const tab = ['students', 'student', 'plan'].includes(v.name) ? 'students' : v.name;
+  const tab = ['students', 'student', 'plan'].includes(v.name) ? 'students' : v.name === 'template' ? 'templates' : v.name;
   const n = unseen().length;
   $('#tabs').hidden = false;
-  $('#tabs').innerHTML = [['students', '👥', 'Alunos'], ['feed', '📈', 'Acompanhar'], ['exercises', '🎬', 'Exercícios'], ['settings', '⚙️', 'Ajustes']]
+  $('#tabs').innerHTML = [['students', '👥', 'Alunos'], ['feed', '📈', 'Acompanhar'], ['templates', '📋', 'Modelos'], ['exercises', '🎬', 'Exercícios'], ['settings', '⚙️', 'Ajustes']]
     .map(([k, i, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-k="${k}"><span>${i}</span>${l}${k === 'feed' && n ? `<b class="badge">${n}</b>` : ''}</button>`).join('');
   if (v.name === 'student' && s) markSeen(logsOf(s.id));
 }
@@ -588,7 +607,7 @@ function logCard(l, withName) {
       <small>${fmtDateTime(l.done_at)}${l.duration_min ? ` · ${l.duration_min} min` : ''} · ${det.reduce((a, d) => a + (d.done || 0), 0)}/${det.reduce((a, d) => a + (d.total || 0), 0)} séries</small></div>
       ${l.effort ? `<span class="eff">💪 ${l.effort}/10</span>` : ''}</div>
     ${l.comment ? `<p class="quote">“${esc(l.comment)}”</p>` : ''}
-    ${det.length ? `<details><summary>Ver exercícios e cargas</summary><table>${det.map(d => `<tr><td>${esc(d.name)}</td><td>${d.done}/${d.total} séries${d.load ? ' · ' + esc(d.load) : ''}</td></tr>`).join('')}</table></details>` : ''}
+    ${det.length ? `<details><summary>Ver exercícios e cargas</summary><table>${det.map(d => `<tr><td>${esc(d.name)}</td><td>${d.mode === 'cardio' ? `${d.done ? '✓ feito' : 'não feito'}${d.dur ? ' · ' + esc(d.dur) + ' min' : ''}` : `${d.done}/${d.total} séries${d.load ? ' · ' + esc(d.load) : ''}`}</td></tr>`).join('')}</table></details>` : ''}
     ${l.trainer_reply ? `<div class="reply"><b>${S.role === 'trainer' ? 'Sua resposta' : '💬 ' + esc((S.me && S.me.trainer_name) || 'Seu personal')}</b><p>${esc(l.trainer_reply)}</p></div>` : ''}
     ${canReply ? `<button class="link" data-act="replyLog" data-id="${l.id}">${l.trainer_reply ? '✎ Editar resposta' : '💬 Responder'}</button>` : ''}
   </div>`;
@@ -629,38 +648,130 @@ function vStudent(s) {
     </div>`;
 }
 
-/* ---------- personal: editor de treino ---------- */
-function vPlan(s, p) {
-  const items = (p.items || []).map((it, i) => {
-    const ex = exById(it.ex);
+/* ---------- modos do exercício e bi-sets ---------- */
+const MODES = [['reps', '🔁 Reps'], ['time', '⏱ Tempo'], ['cardio', '🏃 Cardio']];
+const modeOf = it => (it && it.mode) || 'reps';
+const nSets = it => modeOf(it) === 'cardio' ? 1 : Math.min(Math.max(parseInt(it.sets) || 3, 1), 12);
+const durSec = it => modeOf(it) === 'cardio' ? Math.max(parseFloat(String(it.dur).replace(',', '.')) || 20, 1) * 60 : Math.max(parseInt(it.dur) || 30, 1);
+function blocksOf(items) {
+  const out = [];
+  (items || []).forEach((it, i) => { if (i > 0 && it.link && out.length) out[out.length - 1].push(i); else out.push([i]); });
+  return out;
+}
+const groupName = n => n === 2 ? 'Bi-set' : n === 3 ? 'Tri-set' : 'Circuito';
+function labelsOf(items) {
+  const lab = {};
+  blocksOf(items).forEach((b, bi) => b.forEach((i, k) => { lab[i] = b.length > 1 ? `${bi + 1}${String.fromCharCode(65 + k)}` : `${bi + 1}`; }));
+  return lab;
+}
+const isLastInBlock = (items, i) => !(items[i + 1] && items[i + 1].link);
+function wrapBlocks(items, card) {
+  return blocksOf(items).map(b => b.length === 1 ? card(b[0]) :
+    `<div class="group"><div class="group-h">🔗 ${groupName(b.length)} — faça em sequência e descanse só no final</div>${b.map(card).join('')}</div>`).join('');
+}
+
+/* ---------- personal: editor de treino (e de modelo) ---------- */
+function vPlan(s, p, tpl = false) {
+  const items = p.items || [], lab = labelsOf(items);
+  const card = i => {
+    const it = items[i], ex = exById(it.ex), m = modeOf(it), last = isLastInBlock(items, i);
+    const restCell = last
+      ? `<div><label>Desc. (s)</label><input inputmode="numeric" data-i="${i}" data-f="rest" value="${esc(it.rest)}"></div>`
+      : `<div><label>Desc.</label><div class="nodesc">em<br>sequência</div></div>`;
+    const grid = m === 'cardio'
+      ? `<div class="grid2">
+          <div><label>Duração (min)</label><input inputmode="decimal" data-i="${i}" data-f="dur" value="${esc(it.dur)}" placeholder="20"></div>
+          <div><label>Intensidade / como fazer</label><input data-i="${i}" data-f="int" value="${esc(it.int)}" placeholder="Ex.: zona 2, 6 km/h, inclinação 5%"></div>
+        </div>`
+      : `<div class="grid4">
+          <div><label>Séries</label><input inputmode="numeric" data-i="${i}" data-f="sets" value="${esc(it.sets)}"></div>
+          ${m === 'time'
+            ? `<div><label>Tempo (s)</label><input inputmode="numeric" data-i="${i}" data-f="dur" value="${esc(it.dur)}" placeholder="30"></div>`
+            : `<div><label>Reps</label><input data-i="${i}" data-f="reps" value="${esc(it.reps)}" placeholder="12"></div>`}
+          <div><label>Carga</label><input data-i="${i}" data-f="load" value="${esc(it.load)}" placeholder="kg"></div>
+          ${restCell}
+        </div>`;
     return `<div class="card item">
       <div class="row">
-        <div class="grow"><b>${i + 1}. ${esc(ex ? ex.name : 'Exercício removido')}</b>
+        <div class="grow"><b>${lab[i]}. ${esc(ex ? ex.name : 'Exercício removido')}</b>
           <small>${esc(ex ? ex.grp : '')}${ex && ex.video ? ' · 🎬 com vídeo' : ' · sem vídeo'}</small></div>
         <button class="icon" data-act="moveItem" data-i="${i}" data-d="-1" aria-label="Subir">↑</button>
         <button class="icon" data-act="moveItem" data-i="${i}" data-d="1" aria-label="Descer">↓</button>
         <button class="icon" data-act="delItem" data-i="${i}" aria-label="Remover">✕</button>
       </div>
-      <div class="grid4">
-        <div><label>Séries</label><input inputmode="numeric" data-i="${i}" data-f="sets" value="${esc(it.sets)}"></div>
-        <div><label>Reps</label><input data-i="${i}" data-f="reps" value="${esc(it.reps)}" placeholder="12"></div>
-        <div><label>Carga</label><input data-i="${i}" data-f="load" value="${esc(it.load)}" placeholder="kg"></div>
-        <div><label>Desc. (s)</label><input inputmode="numeric" data-i="${i}" data-f="rest" value="${esc(it.rest)}"></div>
-      </div>
+      <div class="seg">${MODES.map(([k, l]) => `<button class="${m === k ? 'on' : ''}" data-act="setMode" data-i="${i}" data-m="${k}">${l}</button>`).join('')}</div>
+      ${grid}
       <input data-i="${i}" data-f="obs" value="${esc(it.obs)}" placeholder="Observação (ex.: cadência 3-0-1, drop-set na última)">
+      ${i > 0 ? `<button class="link" data-act="toggleLink" data-i="${i}">${it.link ? '✂️ Separar do exercício anterior' : '🔗 Juntar com o anterior (bi-set / circuito)'}</button>` : ''}
     </div>`;
-  }).join('');
-  return `
-    <label>Nome do treino</label><input data-pf="name" value="${esc(p.name)}">
-    <label>Foco / descrição</label><input data-pf="focus" value="${esc(p.focus || '')}" placeholder="Ex.: Inferiores + core">
-    <label>Válido até ${validityChip(p)}</label><input type="date" data-pf="ends_on" value="${esc(p.ends_on || '')}">
-    <div class="chips" style="margin-top:8px">${[4, 6, 8, 12].map(w => `<button class="chip" data-act="setEnds" data-w="${w}">${w} semanas</button>`).join('')}<button class="chip" data-act="setEnds" data-w="0">Sem validade</button></div>
-    <small style="margin-top:-6px">Os atalhos contam a partir de hoje. Você e o aluno recebem aviso quando faltar 1 semana.</small>
+  };
+  const head = tpl
+    ? `<label>Nome do modelo</label><input data-pf="name" value="${esc(p.name)}">
+       <label>Foco / descrição</label><input data-pf="focus" value="${esc(p.focus || '')}" placeholder="Ex.: Hipertrofia iniciante — inferiores">
+       <p class="muted" style="margin:10px 0 0">Ao aplicar, cada aluno recebe uma cópia. Mudar o modelo depois não altera treinos já aplicados.</p>`
+    : `<label>Nome do treino</label><input data-pf="name" value="${esc(p.name)}">
+       <label>Foco / descrição</label><input data-pf="focus" value="${esc(p.focus || '')}" placeholder="Ex.: Inferiores + core">
+       <label>Válido até ${validityChip(p)}</label><input type="date" data-pf="ends_on" value="${esc(p.ends_on || '')}">
+       <div class="chips" style="margin-top:8px">${[4, 6, 8, 12].map(w => `<button class="chip" data-act="setEnds" data-w="${w}">${w} semanas</button>`).join('')}<button class="chip" data-act="setEnds" data-w="0">Sem validade</button></div>
+       <small style="margin-top:-6px">Os atalhos contam a partir de hoje. Você e o aluno recebem aviso quando faltar 1 semana.</small>`;
+  const foot = tpl
+    ? `<button class="btn primary block" data-act="applyTemplate" ${items.length ? '' : 'disabled'}>👥 Aplicar a alunos</button>
+       <button class="btn block" data-act="dupTemplate">Duplicar modelo</button>
+       <button class="btn block danger" data-act="delTemplate">Excluir modelo</button>`
+    : `<p class="muted">As alterações são salvas automaticamente e aparecem na hora para o aluno.</p>
+       <button class="btn block" data-act="saveAsTemplate" ${items.length ? '' : 'disabled'}>📋 Salvar como modelo</button>
+       <button class="btn block" data-act="dupPlan">Duplicar treino</button>
+       <button class="btn block danger" data-act="delPlan">Excluir treino</button>`;
+  return `${head}
     <div class="toolbar"><h2>Exercícios</h2><button class="btn primary" data-act="addItem">+ Adicionar</button></div>
-    ${items || empty('Treino vazio', 'Toque em “+ Adicionar” e escolha os exercícios da sua biblioteca.')}
-    <p class="muted">As alterações são salvas automaticamente e aparecem na hora para o aluno.</p>
-    <button class="btn block" data-act="dupPlan">Duplicar treino</button>
-    <button class="btn block danger" data-act="delPlan">Excluir treino</button>`;
+    ${wrapBlocks(items, card) || empty(tpl ? 'Modelo vazio' : 'Treino vazio', 'Toque em “+ Adicionar” e escolha os exercícios da sua biblioteca.')}
+    ${items.length > 1 ? `<p class="muted" style="margin-top:0">Dica: use “🔗 Juntar com o anterior” para montar bi-sets, tri-sets e circuitos.</p>` : ''}
+    ${foot}`;
+}
+
+/* ---------- personal: modelos de treino ---------- */
+function vTemplates() {
+  const list = S.templates.map(t => `
+    <button class="card row" data-act="openTemplate" data-id="${t.id}">
+      <div class="avatar">📋</div>
+      <div class="grow"><b>${esc(t.name)}</b><small>${(t.items || []).length} exercício(s)${t.focus ? ' · ' + esc(t.focus) : ''}</small></div>
+      <span class="chev">›</span></button>`).join('');
+  return `<div class="toolbar"><h2>Modelos de treino</h2><button class="btn primary" data-act="newTemplate">+ Novo modelo</button></div>
+    <p class="muted" style="margin-top:-6px">Monte uma vez e aplique em vários alunos com um toque. Cada aluno recebe uma cópia, que você pode ajustar depois.</p>
+    ${list || empty('Nenhum modelo ainda', 'Crie um modelo aqui ou use “📋 Salvar como modelo” dentro do treino de um aluno.')}`;
+}
+function applyDialog(t) {
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<form class="dlg" id="applyForm"><h3>Aplicar “${esc(t.name)}”</h3>
+    <p class="muted" style="margin:6px 0 0">Escolha os alunos. Cada um recebe uma cópia do treino.</p>
+    <div class="pick">${S.students.map(s => `<label class="checkrow"><input type="checkbox" name="st" value="${s.id}"><span><b>${esc(s.name)}</b><small>${plansOf(s.id).length} treino(s) · ${esc(s.goal || 'sem objetivo')}</small></span></label>`).join('') || '<p class="muted">Cadastre alunos primeiro.</p>'}</div>
+    <label>Validade do treino</label><select name="weeks">${[4, 6, 8, 12].map(w => `<option value="${w}" ${w === 6 ? 'selected' : ''}>${w} semanas</option>`).join('')}<option value="0">Sem validade</option></select>
+    <div class="actions"><button type="button" class="btn" data-act="closeDlg">Cancelar</button><button class="btn primary">Aplicar</button></div></form>`;
+  $('#applyForm').onsubmit = async e => {
+    e.preventDefault();
+    const ids = [...e.target.querySelectorAll('[name=st]:checked')].map(x => x.value);
+    if (!ids.length) return toast('Escolha pelo menos um aluno');
+    const btn = e.target.querySelector('button.primary'); btn.disabled = true;
+    const w = +e.target.weeks.value;
+    try {
+      for (const id of ids) S.plans.push(await planFromTemplate(t, id, w));
+      dlg.close(); render(); toast(`Treino aplicado a ${ids.length} aluno${ids.length > 1 ? 's' : ''} ✓`);
+    } catch (er) { toast('Erro: ' + ptError(er)); btn.disabled = false; }
+  };
+  dlg.showModal();
+}
+const planFromTemplate = (t, sid, weeks = 6) => api.addPlan({
+  student_id: sid, name: t.name, focus: t.focus || '', position: plansOf(sid).length,
+  items: JSON.parse(JSON.stringify(t.items || [])), ends_on: weeks ? localDay(Date.now() + weeks * 7 * 864e5) : null });
+function newPlanDialog(s) {
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<div class="dlg"><h3>Novo treino para ${esc(s.name.split(' ')[0])}</h3>
+    <div class="pick">
+      <button data-act="newPlanBlank"><span><b>✏️ Treino em branco</b><small>Montar do zero</small></span><span>+</span></button>
+      ${S.templates.map(t => `<button data-act="newPlanFrom" data-id="${t.id}"><span><b>📋 ${esc(t.name)}</b><small>${(t.items || []).length} exercício(s)${t.focus ? ' · ' + esc(t.focus) : ''}</small></span><span>+</span></button>`).join('')}
+    </div>
+    <div class="actions"><button class="btn" data-act="closeDlg">Cancelar</button></div></div>`;
+  dlg.showModal();
 }
 let planSaveT = null, planSaveFn = null;
 function queuePlanSave(p) {
@@ -669,7 +780,8 @@ function queuePlanSave(p) {
   planSaveFn = async () => {
     planSaveT = null; planSaveFn = null;
     try {
-      await api.updatePlan(p.id, { name: p.name, focus: p.focus, items: p.items, ends_on: p.ends_on || null, updated_at: new Date().toISOString() });
+      if (p.student_id) await api.updatePlan(p.id, { name: p.name, focus: p.focus, items: p.items, ends_on: p.ends_on || null, updated_at: new Date().toISOString() });
+      else await api.updateTemplate(p.id, { name: p.name, focus: p.focus, items: p.items, updated_at: new Date().toISOString() });
       const e2 = $('#saving'); if (e2) e2.textContent = 'Salvo ✓';
     } catch (e) { const e2 = $('#saving'); if (e2) e2.textContent = '⚠️ Não salvo'; toast('Erro ao salvar: ' + ptError(e)); }
   };
@@ -720,7 +832,7 @@ function vExercises() {
     <div class="group-title">${esc(g)}</div>
     ${byG[g].sort((a, b) => a.name.localeCompare(b.name, 'pt')).map(e => `
       <button class="card row" data-act="editEx" data-id="${e.id}">
-        <div class="grow"><b>${esc(e.name)}</b><small>${e.video ? '🎬 vídeo cadastrado' : '⚠️ sem vídeo'}</small></div><span class="chev">›</span>
+        <div class="grow"><b>${esc(e.name)}</b><small>${e.video ? '🎬 vídeo cadastrado' : '⚠️ sem vídeo'}${e.kind === 'time' ? ' · ⏱ por tempo' : e.kind === 'cardio' ? ' · 🏃 cardio' : ''}</small></div><span class="chev">›</span>
       </button>`).join('')}`).join('');
   const noVideo = S.exercises.filter(e => !e.video).length;
   return `<div class="toolbar"><h2>Exercícios</h2><button class="btn primary" data-act="newEx">+ Novo</button></div>
@@ -758,7 +870,6 @@ function progress(pid) {
   const pr = store.get(progKey(pid), null);
   return pr && pr.date === localDay() ? pr : { date: localDay(), done: {}, loads: {}, start: null };
 }
-const nSets = it => Math.min(Math.max(parseInt(it.sets) || 3, 1), 12);
 function lastLoad(plan, exName) {
   for (const l of S.logs) {
     if (l.plan_id !== plan.id) continue;
@@ -804,20 +915,31 @@ function renderStudentApp() {
   const P = plans[curPlan];
   const pr = progress(P.id);
   const last = S.logs[0];
-  const items = (P.items || []).map((it, i) => {
+  const lab = labelsOf(P.items || []);
+  const card = i => {
+    const it = P.items[i], m = modeOf(it);
     const ex = exById(it.ex) || { name: 'Exercício', grp: '', video: '', notes: '' };
     const n = nSets(it), done = pr.done[i] || [];
     const load = pr.loads[i] ?? (lastLoad(P, ex.name) || it.load || '');
+    const rest = isLastInBlock(P.items, i) ? parseInt(it.rest) || 0 : 0;
+    const presc = m === 'cardio'
+      ? `<span>🏃 ${esc(it.dur || '20')} min</span>${it.int ? `<span>${esc(it.int)}</span>` : ''}`
+      : `<span>${n} séries</span>${m === 'time' ? `<span>⏱ ${durSec(it)} s cada</span>` : `<span>${esc(it.reps || '-')} reps</span>`}${it.load ? `<span>🏋️ ${esc(it.load)}</span>` : ''}${rest ? `<span>💤 ${rest}s descanso</span>` : ''}`;
+    const sets = m === 'cardio'
+      ? `<button class="set ${done[0] ? 'done' : ''}" data-act="toggleSet" data-i="${i}" data-k="0" aria-label="Marcar como feito">✓</button>
+         <button class="btn" data-act="startCardio" data-i="${i}">▶ Iniciar ${esc(it.dur || '20')}:00</button>`
+      : Array.from({ length: n }, (_, k) => `<button class="set ${done[k] ? 'done' : ''}" data-act="toggleSet" data-i="${i}" data-k="${k}" aria-label="Série ${k + 1}">${k + 1}</button>`).join('');
     return `<div class="card item ${done.filter(Boolean).length >= n ? 'complete' : ''}" id="it${i}">
-      <h3>${i + 1}. ${esc(ex.name)}</h3><small>${esc(ex.grp || '')}</small>
-      <div class="presc"><span>${n} séries</span><span>${esc(it.reps || '-')} reps</span>${it.load ? `<span>🏋️ ${esc(it.load)}</span>` : ''}${parseInt(it.rest) ? `<span>⏱ ${parseInt(it.rest)}s descanso</span>` : ''}</div>
+      <h3>${lab[i]}. ${esc(ex.name)}</h3><small>${esc(ex.grp || '')}${m === 'time' ? ' · por tempo: toque na série para iniciar o cronômetro' : ''}</small>
+      <div class="presc">${presc}</div>
       ${it.obs ? `<p class="obs">${esc(it.obs)}</p>` : ''}
       ${videoEmbed(ex.video) ? `<div class="video pending" id="v${i}"><button data-act="showVideo" data-i="${i}">▶ Ver vídeo de execução</button></div>` : ''}
       ${ex.notes ? `<details><summary>Como executar</summary><p style="margin:6px 0 0">${esc(ex.notes)}</p></details>` : ''}
-      <div class="sets">${Array.from({ length: n }, (_, k) => `<button class="set ${done[k] ? 'done' : ''}" data-act="toggleSet" data-i="${i}" data-k="${k}" aria-label="Série ${k + 1}">${k + 1}</button>`).join('')}</div>
-      <div class="loadin"><label for="ld${i}">Carga usada</label><input id="ld${i}" data-load="${i}" value="${esc(load)}" placeholder="ex.: 20 kg"></div>
+      <div class="sets">${sets}</div>
+      ${m === 'cardio' ? '' : `<div class="loadin"><label for="ld${i}">Carga usada</label><input id="ld${i}" data-load="${i}" value="${esc(load)}" placeholder="ex.: 20 kg"></div>`}
     </div>`;
-  }).join('');
+  };
+  const items = wrapBlocks(P.items || [], card);
   $('#app').innerHTML = off + pendHtml + `
     <div class="hello"><h2>Olá, ${esc(S.me.name.split(' ')[0])}! 💪</h2>
       <small>Treino montado por ${esc(S.me.trainer_name || 'seu personal')}${S.me.goal ? ' · ' + esc(S.me.goal) : ''}</small>
@@ -877,7 +999,9 @@ function finishDialog() {
       effort, comment: e.target.comment.value.trim(),
       details: (P.items || []).map((it, i) => {
         const ex = exById(it.ex) || { name: 'Exercício' };
-        return { name: ex.name, done: (pr.done[i] || []).slice(0, nSets(it)).filter(Boolean).length, total: nSets(it), load: (pr.loads[i] ?? (lastLoad(P, ex.name) || it.load || '')).trim() };
+        const done = (pr.done[i] || []).slice(0, nSets(it)).filter(Boolean).length;
+        if (modeOf(it) === 'cardio') return { name: ex.name, mode: 'cardio', done, total: 1, load: '', dur: it.dur || '' };
+        return { name: ex.name, mode: modeOf(it), done, total: nSets(it), load: (pr.loads[i] ?? (lastLoad(P, ex.name) || it.load || '')).trim() };
       })
     };
     saveLog(log);
@@ -913,9 +1037,22 @@ async function flushPending() {
   if (left.length < pend.length) { toast('Treinos pendentes enviados ao personal ✓'); render(); }
 }
 window.addEventListener('online', flushPending);
+// Personal: ao voltar para o app, busca treinos novos dos alunos (sem atrapalhar quem está editando).
+let lastRefresh = Date.now();
+async function refreshTrainer() {
+  if (S.role !== 'trainer' || document.hidden || Date.now() - lastRefresh < 15000) return;
+  lastRefresh = Date.now();
+  try {
+    const since = new Date(Date.now() - 120 * 864e5).toISOString();
+    [S.students, S.logs] = await Promise.all([api.students(), api.logs({ since })]);
+    if (!['plan', 'template'].includes(S.view.name) && !$('#dlg').open) render();
+  } catch {}
+}
+document.addEventListener('visibilitychange', refreshTrainer);
+window.addEventListener('focus', refreshTrainer);
 
 /* ===================== cronômetro de descanso ===================== */
-let timerInt = null, timerEnd = 0, audioCtx = null;
+let timerInt = null, timerEnd = 0, audioCtx = null, timerDone = null;
 function beep() {
   try {
     audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
@@ -928,15 +1065,21 @@ function beep() {
   } catch {}
   try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch {}
 }
-function startTimer(sec) {
+// opts.work = cronômetro de execução (exercício por tempo / cardio); opts.onDone roda ao terminar ou ao tocar em "Concluir".
+function startTimer(sec, opts = {}) {
   try { audioCtx ||= new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch {}
   timerEnd = Date.now() + sec * 1000;
+  timerDone = opts.onDone || null;
   const el = $('#timer'); el.hidden = false;
-  el.innerHTML = `<div>Descanso</div><div class="big" id="tBig"></div><div class="btns"><button data-act="tAdd">+15s</button><button data-act="tSkip">Pular</button></div>`;
+  el.classList.toggle('work', !!opts.work);
+  el.innerHTML = `<div>${esc(opts.label || 'Descanso')}</div><div class="big" id="tBig"></div><div class="btns">${opts.work
+    ? `<button data-act="tCancel">Cancelar</button><button data-act="tAdd">+15s</button><button data-act="tDone">Concluir</button>`
+    : `<button data-act="tAdd">+15s</button><button data-act="tSkip">Pular</button>`}</div>`;
   clearInterval(timerInt);
   const tick = () => {
     const left = Math.max(0, Math.ceil((timerEnd - Date.now()) / 1000));
     const b = $('#tBig'); if (b) b.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    if (left <= 0 && opts.work) { clearInterval(timerInt); beep(); finishWork(); return; }
     if (left <= 0) {
       clearInterval(timerInt); beep();
       el.innerHTML = `<div class="big" style="font-size:44px">Bora! 🔥</div><div>Próxima série</div><div class="btns"><button data-act="tSkip">OK</button></div>`;
@@ -946,9 +1089,37 @@ function startTimer(sec) {
   tick(); timerInt = setInterval(tick, 250);
 }
 
+function finishWork() {
+  clearInterval(timerInt);
+  const f = timerDone; timerDone = null;
+  $('#timer').hidden = true; $('#timer').classList.remove('work');
+  if (f) f();
+}
+function markSet(P, i, k, val) {
+  const pr = progress(P.id), it = P.items[i];
+  pr.start ||= Date.now();
+  (pr.done[i] ||= [])[k] = val;
+  store.set(progKey(P.id), pr);
+  const btn = document.querySelector(`.set[data-i="${i}"][data-k="${k}"]`); if (btn) btn.classList.toggle('done', val);
+  const c = $('#it' + i); if (c) c.classList.toggle('complete', pr.done[i].slice(0, nSets(it)).filter(Boolean).length >= nSets(it));
+  updateProgress(P, pr);
+}
+// Depois de uma série: dentro de bi-set/circuito vai direto para o próximo; no fim do bloco, descansa.
+function afterSet(P, i) {
+  if (!isLastInBlock(P.items, i)) {
+    const nx = exById(P.items[i + 1].ex);
+    toast(`Sem descanso: agora ${nx ? nx.name : 'o próximo exercício'} 👉`);
+    return;
+  }
+  const rest = parseInt(P.items[i].rest) || 0;
+  if (rest > 0 && modeOf(P.items[i]) !== 'cardio') startTimer(rest);
+  else if (modeOf(P.items[i]) !== 'reps') toast('Série concluída ✅');
+}
+
 /* ===================== diálogos (personal) ===================== */
 function field(f, val) {
   const v = esc(val ?? '');
+  if (f.type === 'select') return `<label>${esc(f.label)}</label><select name="${f.k}">${f.options.map(([k, l]) => `<option value="${k}" ${String(val ?? f.def) === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
   if (f.type === 'textarea') return `<label>${esc(f.label)}</label><textarea name="${f.k}" placeholder="${esc(f.ph || '')}">${v}</textarea>`;
   const list = f.list ? `<datalist id="dl_${f.k}">${f.list.map(o => `<option value="${esc(o)}">`).join('')}</datalist>` : '';
   return `<label>${esc(f.label)}</label><input name="${f.k}" type="${f.type || 'text'}" value="${v}" placeholder="${esc(f.ph || '')}" ${f.req ? 'required' : ''} ${f.list ? `list="dl_${f.k}"` : ''}>${list}`;
@@ -978,6 +1149,7 @@ function exerciseDialog(ex, after) {
   const form = formDialog(isNew ? 'Novo exercício' : 'Editar exercício', [
     { k: 'name', label: 'Nome', req: true, ph: 'Ex.: Agachamento sumô' },
     { k: 'grp', label: 'Grupo muscular', list: groups(), ph: 'Ex.: Pernas' },
+    { k: 'kind', label: 'Tipo padrão ao adicionar no treino', type: 'select', def: 'reps', options: [['reps', '🔁 Séries × repetições'], ['time', '⏱ Por tempo (ex.: prancha 30 s)'], ['cardio', '🏃 Cardio (ex.: esteira 20 min)']] },
     { k: 'video', label: 'Link do seu vídeo (YouTube, Drive, Vimeo ou .mp4)', type: 'url', ph: 'https://youtu.be/…' },
     { k: 'notes', label: 'Como executar (aparece para o aluno)', type: 'textarea' }
   ], ex || {}, async d => {
@@ -1015,11 +1187,15 @@ function pickerDialog(plan) {
 const BASIC = [['Agachamento livre', 'Pernas'], ['Leg press 45°', 'Pernas'], ['Cadeira extensora', 'Pernas'], ['Mesa flexora', 'Pernas'],
   ['Elevação pélvica', 'Glúteos'], ['Supino reto com barra', 'Peito'], ['Crucifixo com halteres', 'Peito'], ['Puxada frontal', 'Costas'],
   ['Remada baixa', 'Costas'], ['Desenvolvimento com halteres', 'Ombros'], ['Elevação lateral', 'Ombros'], ['Rosca direta', 'Bíceps'],
-  ['Tríceps na polia', 'Tríceps'], ['Prancha abdominal', 'Abdômen'], ['Panturrilha em pé', 'Panturrilha']];
-const newItem = ex => ({ ex, sets: '3', reps: '12', load: '', rest: '60', obs: '' });
+  ['Tríceps na polia', 'Tríceps'], ['Prancha abdominal', 'Abdômen', 'time'], ['Panturrilha em pé', 'Panturrilha'],
+  ['Esteira', 'Cardio', 'cardio'], ['Bicicleta ergométrica', 'Cardio', 'cardio']];
+const DEFAULTS = { reps: { sets: '3', reps: '12', rest: '60', dur: '' }, time: { sets: '3', reps: '', rest: '30', dur: '30' }, cardio: { sets: '1', reps: '', rest: '0', dur: '20' } };
+const newItem = exId => { const m = (exById(exId) || {}).kind || 'reps'; return { ex: exId, mode: m, load: '', obs: '', int: '', link: false, ...DEFAULTS[m] }; };
 
 /* ===================== ações ===================== */
-const cur = () => ({ s: S.view.sid && studentById(S.view.sid), p: S.view.pid && S.plans.find(x => x.id === S.view.pid) });
+const cur = () => S.view.name === 'template'
+  ? { s: null, p: S.templates.find(t => t.id === S.view.tid), tpl: true }
+  : { s: S.view.sid && studentById(S.view.sid), p: S.view.pid && S.plans.find(x => x.id === S.view.pid) };
 const actions = {
   back: () => go($('#top')._back || { name: 'students' }),
   tab: el => { if (S.role === 'student') { S.view = { name: el.dataset.k }; render(); window.scrollTo(0, 0); } else go({ name: el.dataset.k }); },
@@ -1050,7 +1226,13 @@ const actions = {
     s.invite_code = await api.resetInvite(s.id); s.user_id = null; render(); toast('Novo convite gerado');
   },
   // treinos
-  newPlan: async () => {
+  newPlan: () => { const { s } = cur(); if (S.templates.length) newPlanDialog(s); else return actions.newPlanBlank(); },
+  newPlanFrom: async el => {
+    const { s } = cur(), t = S.templates.find(x => x.id === el.dataset.id);
+    const p = await planFromTemplate(t, s.id); S.plans.push(p); $('#dlg').close(); go({ name: 'plan', sid: s.id, pid: p.id }); toast('Treino criado a partir do modelo');
+  },
+  newPlanBlank: async () => {
+    if ($('#dlg').open) $('#dlg').close();
     const { s } = cur(), ps = plansOf(s.id);
     const p = await api.addPlan({ student_id: s.id, name: 'Treino ' + String.fromCharCode(65 + ps.length), focus: '', position: ps.length, items: [], ends_on: localDay(Date.now() + 42 * 864e5) });
     S.plans.push(p); go({ name: 'plan', sid: s.id, pid: p.id });
@@ -1083,19 +1265,51 @@ const actions = {
   addItem: () => pickerDialog(cur().p),
   pick: el => { const dlg = $('#dlg'); dlg._plan.items.push(newItem(el.dataset.id)); queuePlanSave(dlg._plan); dlg._draw(); toast('Adicionado: ' + exById(el.dataset.id).name); },
   pickNew: () => { const plan = $('#dlg')._plan; $('#dlg').close(); exerciseDialog(null, ex => { plan.items.push(newItem(ex.id)); render(); queuePlanSave(plan); }); },
-  closeDlg: () => { $('#dlg').close(); if (S.role === 'trainer' && S.view.name === 'plan') { render(); const el = $('#saving'); if (el && planSaveT) el.textContent = 'Salvando…'; } },
+  closeDlg: () => { $('#dlg').close(); if (S.role === 'trainer' && (S.view.name === 'plan' || S.view.name === 'template')) { render(); const el = $('#saving'); if (el && planSaveT) el.textContent = 'Salvando…'; } },
   moveItem: el => { const { p } = cur(); const i = +el.dataset.i, j = i + +el.dataset.d; if (j < 0 || j >= p.items.length) return; [p.items[i], p.items[j]] = [p.items[j], p.items[i]]; render(); queuePlanSave(p); },
-  delItem: el => { const { p } = cur(); p.items.splice(+el.dataset.i, 1); render(); queuePlanSave(p); },
+  delItem: el => { const { p } = cur(); p.items.splice(+el.dataset.i, 1); if (p.items[0]) p.items[0].link = false; render(); queuePlanSave(p); },
+  setMode: el => {
+    const { p } = cur(), it = p.items[+el.dataset.i], m = el.dataset.m;
+    if (modeOf(it) === m) return;
+    Object.assign(it, { mode: m, ...DEFAULTS[m], ...(m === 'reps' && it.reps ? { reps: it.reps } : {}) });
+    render(); queuePlanSave(p);
+  },
+  toggleLink: el => { const { p } = cur(), it = p.items[+el.dataset.i]; it.link = !it.link; render(); queuePlanSave(p); toast(it.link ? 'Juntado: feitos em sequência, sem descanso entre eles' : 'Exercício separado'); },
+  // modelos
+  newTemplate: () => formDialog('Novo modelo de treino', [{ k: 'name', label: 'Nome do modelo', req: true, ph: 'Ex.: Hipertrofia iniciante A' }, { k: 'focus', label: 'Foco / descrição', ph: 'Ex.: Inferiores + core' }], {}, async d => {
+    const t = await api.addTemplate({ ...d, items: [] }); S.templates.push(t); $('#dlg').close(); go({ name: 'template', tid: t.id });
+  }),
+  openTemplate: el => go({ name: 'template', tid: el.dataset.id }),
+  saveAsTemplate: () => {
+    flushPlanSave();
+    const { p } = cur();
+    formDialog('Salvar como modelo', [{ k: 'name', label: 'Nome do modelo', req: true }], { name: p.name + (p.focus ? ' — ' + p.focus : '') }, async d => {
+      const t = await api.addTemplate({ name: d.name, focus: p.focus || '', items: JSON.parse(JSON.stringify(p.items)) });
+      S.templates.push(t); toast('Modelo salvo — veja na aba 📋 Modelos');
+    }, '<p class="muted" style="margin:8px 0 0">O modelo guarda os exercícios, séries, bi-sets e observações para você aplicar em outros alunos.</p>');
+  },
+  applyTemplate: () => { flushPlanSave(); applyDialog(cur().p); },
+  dupTemplate: async () => {
+    flushPlanSave(); const { p } = cur();
+    const t = await api.addTemplate({ name: p.name + ' (cópia)', focus: p.focus || '', items: JSON.parse(JSON.stringify(p.items || [])) });
+    S.templates.push(t); go({ name: 'template', tid: t.id }); toast('Modelo duplicado');
+  },
+  delTemplate: async () => {
+    const { p } = cur(); if (!confirm(`Excluir o modelo “${p.name}”? Os treinos já aplicados aos alunos continuam.`)) return;
+    clearTimeout(planSaveT); planSaveT = null;
+    await api.deleteTemplate(p.id); S.templates = S.templates.filter(x => x !== p); go({ name: 'templates' });
+  },
   // acompanhamento
   seenAll: async () => { await markSeen(S.logs); render(); toast('Tudo marcado como visto'); },
   // exercícios
   newEx: () => exerciseDialog(null),
   editEx: el => exerciseDialog(exById(el.dataset.id)),
-  seedEx: async () => { for (const [name, grp] of BASIC) S.exercises.push(await api.addExercise({ name, grp })); render(); toast('Exercícios adicionados — agora coloque seus vídeos'); },
+  seedEx: async () => { for (const [name, grp, kind] of BASIC) S.exercises.push(await api.addExercise({ name, grp, kind: kind || 'reps' })); render(); toast('Exercícios adicionados — agora coloque seus vídeos'); },
   delEx: async el => {
     const id = el.dataset.id, using = S.plans.filter(p => (p.items || []).some(i => i.ex === id));
     if (!confirm(using.length ? `Este exercício está em ${using.length} treino(s) e será removido deles. Excluir mesmo assim?` : 'Excluir exercício?')) return;
     for (const p of using) { p.items = p.items.filter(i => i.ex !== id); await api.updatePlan(p.id, { items: p.items }); }
+    for (const t of S.templates.filter(t => (t.items || []).some(i => i.ex === id))) { t.items = t.items.filter(i => i.ex !== id); await api.updateTemplate(t.id, { items: t.items }); }
     await api.deleteExercise(id);
     S.exercises = S.exercises.filter(e => e.id !== id);
     $('#dlg').close(); render();
@@ -1107,17 +1321,20 @@ const actions = {
   showVideo: el => { const i = +el.dataset.i, box = $('#v' + i); box.classList.remove('pending'); box.innerHTML = videoEmbed(exById(S.plans[curPlan].items[i].ex).video); },
   toggleSet: el => {
     const P = S.plans[curPlan], i = +el.dataset.i, k = +el.dataset.k, it = P.items[i];
-    const pr = progress(P.id);
-    pr.start ||= Date.now();
-    const arr = pr.done[i] ||= [];
-    arr[k] = !arr[k];
-    store.set(progKey(P.id), pr);
-    el.classList.toggle('done', arr[k]);
-    $('#it' + i).classList.toggle('complete', arr.slice(0, nSets(it)).filter(Boolean).length >= nSets(it));
-    updateProgress(P, pr);
-    const rest = parseInt(it.rest) || 0;
-    if (arr[k] && rest > 0) startTimer(rest);
+    const wasDone = !!(progress(P.id).done[i] || [])[k];
+    if (!wasDone && modeOf(it) === 'time') {
+      const ex = exById(it.ex);
+      return startTimer(durSec(it), { work: true, label: `${ex ? ex.name : 'Exercício'} · série ${k + 1}`, onDone: () => { markSet(P, i, k, true); afterSet(P, i); } });
+    }
+    markSet(P, i, k, !wasDone);
+    if (!wasDone && modeOf(it) !== 'cardio') afterSet(P, i);
   },
+  startCardio: el => {
+    const P = S.plans[curPlan], i = +el.dataset.i, it = P.items[i], ex = exById(it.ex);
+    startTimer(durSec(it), { work: true, label: `🏃 ${ex ? ex.name : 'Cardio'}${it.int ? ' · ' + it.int : ''}`, onDone: () => { markSet(P, i, 0, true); toast('Cardio concluído ✅'); } });
+  },
+  tDone: () => finishWork(),
+  tCancel: () => { clearInterval(timerInt); timerDone = null; $('#timer').hidden = true; $('#timer').classList.remove('work'); },
   finish: () => finishDialog(),
   tAdd: () => { timerEnd += 15000; },
   tSkip: () => { clearInterval(timerInt); $('#timer').hidden = true; }
@@ -1148,7 +1365,7 @@ document.addEventListener('input', e => {
     trainerNameT = setTimeout(() => api.updateTrainer(S.trainer.id, S.trainer.name).catch(er => toast('Erro: ' + ptError(er))), 700); return;
   }
   const { s, p } = cur();
-  if (t.dataset.pf && p) { p[t.dataset.pf] = t.dataset.pf === 'ends_on' ? (t.value || null) : t.value; queuePlanSave(p); if (t.dataset.pf === 'name') $('#top h1').textContent = s.name + ' · ' + t.value; return; }
+  if (t.dataset.pf && p) { p[t.dataset.pf] = t.dataset.pf === 'ends_on' ? (t.value || null) : t.value; queuePlanSave(p); if (t.dataset.pf === 'name') $('#top h1').textContent = (s ? s.name + ' · ' : 'Modelo · ') + t.value; return; }
   if (t.dataset.f && p) { p.items[+t.dataset.i][t.dataset.f] = t.value; queuePlanSave(p); }
 });
 document.addEventListener('change', async e => {
