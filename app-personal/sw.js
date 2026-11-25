@@ -1,6 +1,6 @@
-// Service worker: permite abrir o app offline (rede primeiro, cache como reserva).
-const CACHE = 'meu-personal-v2';
-const ASSETS = ['./', './index.html', './config.js', './manifest.json', './icon.svg'];
+// Service worker: app offline (rede primeiro, cache como reserva) e notificações no celular.
+const CACHE = 'meu-personal-v3';
+const ASSETS = ['./', './index.html', './config.js', './manifest.json', './icon.svg', './icon-192.png', './badge-96.png'];
 const CDN = 'https://cdn.jsdelivr.net';
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
@@ -20,4 +20,23 @@ self.addEventListener('fetch', e => {
       return r;
     }).catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('./index.html')))
   );
+});
+
+// ---- Notificações ----
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'Meu Personal', {
+    body: d.body || '', icon: 'icon-192.png', badge: 'badge-96.png',
+    tag: d.tag || undefined, renotify: !!d.tag, data: { url: d.url || './' }
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const open = list.find(c => c.url.startsWith(self.registration.scope));
+    if (open) { open.postMessage({ open: url }); return open.focus(); }
+    return self.clients.openWindow(url);
+  }));
 });

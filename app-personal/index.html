@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Treinos">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{
   --bg:#f4f6f8; --surface:#fff; --surface2:#eef2f5; --text:#0f172a; --muted:#64748b;
@@ -337,7 +337,12 @@ function makeApi(sb) {
       if (since) q = q.gte('done_at', since);
       return q.limit(limit || 500).then(chk);
     },
-    addLog: l => sb.from('workout_logs').insert(l).then(chk),
+    addLog: l => sb.from('workout_logs').insert(l).select('id').single().then(chk),
+    prefs: () => sb.from('notif_prefs').select('*').maybeSingle().then(chk),
+    savePrefs: (uid, p) => sb.from('notif_prefs').upsert({ user_id: uid, ...p }, { onConflict: 'user_id' }).select().single().then(chk),
+    savePushSub: s => sb.from('push_subs').upsert({ endpoint: s.endpoint, p256dh: s.keys.p256dh, auth: s.keys.auth, ua: navigator.userAgent.slice(0, 200) }, { onConflict: 'endpoint' }).then(chk),
+    deletePushSub: endpoint => sb.from('push_subs').delete().eq('endpoint', endpoint).then(chk),
+    notify: (type, id) => sb.functions.invoke('notify', { body: { type, id } }).then(r => { if (r.error) throw r.error; return r.data; }),
     markSeen: ids => sb.from('workout_logs').update({ trainer_seen: true }).in('id', ids).then(chk),
     replyLog: (id, text) => sb.from('workout_logs').update({ trainer_reply: text, replied_at: text ? new Date().toISOString() : null, trainer_seen: true }).eq('id', id).then(chk)
   };
@@ -350,7 +355,7 @@ const api = window.__TEST_API__ ||
 /* ===================== estado ===================== */
 const S = {
   user: null, role: null, trainer: null, me: null,
-  students: [], exercises: [], plans: [], logs: [], templates: [], assess: [], anam: {},
+  students: [], exercises: [], plans: [], logs: [], templates: [], assess: [], anam: {}, prefs: null,
   view: { name: 'loading' }, offline: false
 };
 const exById = id => S.exercises.find(e => e.id === id);
@@ -365,7 +370,21 @@ let authTab = 'login', authMsg = null;
 function go(v) { flushPlanSave(); S.view = v; render(); window.scrollTo(0, 0); }
 
 /* ===================== início e login ===================== */
+// Link aberto por uma notificação: #aluno=<id> (personal) ou #treino / #historico / #avaliacao (aluno).
+let pendingDeep = null;
+function takeDeepLink(hash) {
+  const m = String(hash || '').match(/^#(aluno=[\w-]+|treino|historico|avaliacao)$/);
+  return m ? m[1] : null;
+}
+function applyDeep() {
+  const d = pendingDeep; pendingDeep = null;
+  if (!d) return;
+  if (S.role === 'trainer' && d.startsWith('aluno=')) { const sid = d.slice(6); if (studentById(sid)) go({ name: 'student', sid }); }
+  if (S.role === 'student' && !d.startsWith('aluno=')) { S.view = { name: d }; render(); window.scrollTo(0, 0); }
+}
 async function boot() {
+  pendingDeep = takeDeepLink(location.hash);
+  if (pendingDeep) history.replaceState(null, '', location.pathname + location.search);
   const inv = location.hash.match(/convite=([A-Za-z0-9]+)/);
   if (inv) { store.set('mp_invite', inv[1].toUpperCase()); authTab = 'signup'; history.replaceState(null, '', location.pathname + location.search); }
   if (!api) return renderSetup();
@@ -381,7 +400,7 @@ async function boot() {
   flushPending();
 }
 function resetState() {
-  Object.assign(S, { user: null, role: null, trainer: null, me: null, students: [], exercises: [], plans: [], logs: [], templates: [], assess: [], anam: {}, view: { name: 'loading' }, offline: false });
+  Object.assign(S, { user: null, role: null, trainer: null, me: null, students: [], exercises: [], plans: [], logs: [], templates: [], assess: [], anam: {}, prefs: null, view: { name: 'loading' }, offline: false });
 }
 async function enter(user) {
   S.user = user;
@@ -394,7 +413,7 @@ async function enter(user) {
     if (t) {
       S.role = 'trainer'; S.trainer = t;
       await loadTrainer();
-      return go({ name: 'students' });
+      go({ name: 'students' }); return applyDeep();
     }
     let me = await api.myStudent();
     const inv = store.get('mp_invite', null);
@@ -408,7 +427,7 @@ async function enter(user) {
       S.role = 'student'; S.me = me;
       await loadStudent();
       store.set(cacheKey, { me: S.me, plans: S.plans, exercises: S.exercises, logs: S.logs, assess: S.assess, anam: S.anam });
-      return go({ name: 'treino' });
+      go({ name: 'treino' }); return applyDeep();
     }
     S.role = 'none';
     renderOnboarding(inviteErr);
@@ -424,12 +443,12 @@ async function enter(user) {
 async function loadTrainer() {
   const since = new Date(Date.now() - 120 * 864e5).toISOString();
   let anams;
-  [S.students, S.exercises, S.plans, S.logs, S.templates, S.assess, anams] = await Promise.all([api.students(), api.exercises(), api.plans(), api.logs({ since }), api.templates(), api.assessments(), api.anamneses()]);
+  [S.students, S.exercises, S.plans, S.logs, S.templates, S.assess, anams, S.prefs] = await Promise.all([api.students(), api.exercises(), api.plans(), api.logs({ since }), api.templates(), api.assessments(), api.anamneses(), api.prefs().catch(() => null)]);
   S.anam = Object.fromEntries(anams.map(a => [a.student_id, a]));
 }
 async function loadStudent() {
   let anams;
-  [S.plans, S.exercises, S.logs, S.assess, anams] = await Promise.all([api.plans(S.me.id), api.exercises(), api.logs({ studentId: S.me.id, limit: 200 }), api.assessments(S.me.id), api.anamneses()]);
+  [S.plans, S.exercises, S.logs, S.assess, anams, S.prefs] = await Promise.all([api.plans(S.me.id), api.exercises(), api.logs({ studentId: S.me.id, limit: 200 }), api.assessments(S.me.id), api.anamneses(), api.prefs().catch(() => null)]);
   S.anam = Object.fromEntries(anams.map(a => [a.student_id, a]));
 }
 
@@ -508,7 +527,7 @@ function renderOnboarding(err) {
 
 /* ===================== render principal ===================== */
 function render() {
-  if (S.role === 'student') { renderStudentApp(); hydratePhotos(); return; }
+  if (S.role === 'student') { renderStudentApp(); hydratePhotos(); updatePushBox(); return; }
   if (S.role !== 'trainer') return;
   const v = S.view;
   const s = v.sid && studentById(v.sid);
@@ -533,7 +552,7 @@ function render() {
   $('#tabs').innerHTML = [['students', '👥', 'Alunos'], ['feed', '📈', 'Acompanhar'], ['templates', '📋', 'Modelos'], ['exercises', '🎬', 'Exercícios'], ['settings', '⚙️', 'Ajustes']]
     .map(([k, i, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-k="${k}"><span>${i}</span>${l}${k === 'feed' && n ? `<b class="badge">${n}</b>` : ''}</button>`).join('');
   if (v.name === 'student' && s) markSeen(logsOf(s.id));
-  hydratePhotos();
+  hydratePhotos(); updatePushBox();
 }
 const empty = (t, d) => `<div class="empty"><b>${esc(t)}</b>${esc(d)}</div>`;
 
@@ -793,6 +812,7 @@ function vPlan(s, p, tpl = false) {
        <button class="btn block" data-act="dupTemplate">Duplicar modelo</button>
        <button class="btn block danger" data-act="delTemplate">Excluir modelo</button>`
     : `<p class="muted">As alterações são salvas automaticamente e aparecem na hora para o aluno.</p>
+       ${pushOK() && s && s.user_id ? `<button class="btn block" data-act="notifyPlan">📣 Avisar ${esc(s.name.split(' ')[0])} que o treino mudou</button>` : ''}
        <button class="btn block" data-act="saveAsTemplate" ${items.length ? '' : 'disabled'}>📋 Salvar como modelo</button>
        <button class="btn block" data-act="dupPlan">Duplicar treino</button>
        <button class="btn block danger" data-act="delPlan">Excluir treino</button>`;
@@ -828,7 +848,7 @@ function applyDialog(t) {
     const btn = e.target.querySelector('button.primary'); btn.disabled = true;
     const w = +e.target.weeks.value;
     try {
-      for (const id of ids) S.plans.push(await planFromTemplate(t, id, w));
+      for (const id of ids) { const p = await planFromTemplate(t, id, w); S.plans.push(p); notifyQuiet('plan', p.id); }
       dlg.close(); render(); toast(`Treino aplicado a ${ids.length} aluno${ids.length > 1 ? 's' : ''} ✓`);
     } catch (er) { toast('Erro: ' + ptError(er)); btn.disabled = false; }
   };
@@ -1163,6 +1183,7 @@ function vSettings() {
       <button class="btn block" data-act="import">⬆️ Importar backup</button>
       <input type="file" id="importFile" accept="application/json,.json" hidden>
     </div>
+    ${notifCard()}
     <button class="btn block" data-act="logout">Sair da conta</button>`;
 }
 
@@ -1205,6 +1226,7 @@ function renderStudentApp() {
     $('#app').innerHTML = `<div class="card"><div class="row"><div class="avatar">${esc(initials(S.me.name))}</div>
       <div class="grow"><h3>${esc(S.me.name)}</h3><small>${esc(S.user.email)}</small></div></div>
       <p class="muted" style="margin:10px 0 0">Personal: <b>${esc(S.me.trainer_name || '—')}</b>${S.me.goal ? `<br>Objetivo: ${esc(S.me.goal)}` : ''}</p></div>
+      ${notifCard()}
       <button class="btn block" data-act="reload">🔄 Atualizar treino</button>
       <button class="btn block" data-act="logout">Sair da conta</button>`;
     return;
@@ -1325,8 +1347,10 @@ async function saveLog(log) {
   const P = S.plans[curPlan];
   store.del(progKey(P.id));
   try {
-    await api.addLog(log);
-    S.logs.unshift({ ...log, id: 'local-' + Date.now(), trainer_seen: false });
+    const row = await api.addLog(log);
+    const id = (row && row.id) || 'local-' + Date.now();
+    S.logs.unshift({ ...log, id, trainer_seen: false });
+    notifyQuiet('log', id);
     toast(`${P.name} concluído e enviado ao personal! 🎉`);
   } catch {
     const k = 'mp_pending_' + S.user.id;
@@ -1343,7 +1367,7 @@ async function flushPending() {
   if (!pend.length) return;
   const left = [];
   for (const log of pend) {
-    try { await api.addLog(log); S.logs.unshift({ ...log, id: 'local-' + Math.random(), trainer_seen: false }); } catch { left.push(log); }
+    try { const row = await api.addLog(log); S.logs.unshift({ ...log, id: (row && row.id) || 'local-' + Math.random(), trainer_seen: false }); } catch { left.push(log); }
   }
   store.set(k, left);
   S.logs.sort((a, b) => new Date(b.done_at) - new Date(a.done_at));
@@ -1352,8 +1376,8 @@ async function flushPending() {
 window.addEventListener('online', flushPending);
 // Personal: ao voltar para o app, busca treinos novos dos alunos (sem atrapalhar quem está editando).
 let lastRefresh = Date.now();
-async function refreshTrainer() {
-  if (S.role !== 'trainer' || document.hidden || Date.now() - lastRefresh < 15000) return;
+async function refreshTrainer(force) {
+  if (S.role !== 'trainer' || (force !== true && (document.hidden || Date.now() - lastRefresh < 15000))) return;
   lastRefresh = Date.now();
   try {
     const since = new Date(Date.now() - 120 * 864e5).toISOString();
@@ -1365,6 +1389,84 @@ async function refreshTrainer() {
 }
 document.addEventListener('visibilitychange', refreshTrainer);
 window.addEventListener('focus', refreshTrainer);
+
+/* ===================== notificações no celular ===================== */
+const pushOK = () => !!CFG.VAPID_PUBLIC_KEY;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+function b64uToBytes(k) { const pad = '='.repeat((4 - k.length % 4) % 4); return Uint8Array.from(atob((k + pad).replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)); }
+async function pushState() {
+  if (!pushOK()) return 'unconfigured';
+  if (isIOS && !standalone()) return 'ios-install';
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'unsupported';
+  if (Notification.permission === 'denied') return 'denied';
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return 'unsupported';
+  const sub = await reg.pushManager.getSubscription();
+  return sub && Notification.permission === 'granted' ? 'on' : 'off';
+}
+async function enablePush() {
+  if (await Notification.requestPermission() !== 'granted') throw new Error('Você não permitiu as notificações. Libere nas configurações do celular.');
+  const reg = await navigator.serviceWorker.ready;
+  const opts = { userVisibleOnly: true, applicationServerKey: b64uToBytes(CFG.VAPID_PUBLIC_KEY) };
+  let sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe(opts);
+  try { await api.savePushSub(sub.toJSON()); }
+  catch { await sub.unsubscribe(); sub = await reg.pushManager.subscribe(opts); await api.savePushSub(sub.toJSON()); }
+}
+async function disablePush() {
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = reg && reg.pushManager && await reg.pushManager.getSubscription();
+  if (sub) { try { await api.deletePushSub(sub.endpoint); } catch {} await sub.unsubscribe(); }
+}
+function notifCard() {
+  const trainer = S.role === 'trainer', p = S.prefs || {};
+  if (!pushOK()) return trainer ? `<div class="card"><h3>🔔 Notificações</h3><p class="muted" style="margin:6px 0 0">Ainda não configuradas. Veja o passo “Notificações” no LEIA-ME.</p></div>` : '';
+  const chk = (k, label) => `<label class="checkrow"><input type="checkbox" data-pref="${k}" ${p[k] === false ? '' : 'checked'}><span>${label}</span></label>`;
+  const days = p.remind_days || [];
+  return `<div class="card"><h3>🔔 Notificações</h3>
+    <div id="pushBox" class="muted" style="margin:6px 0 6px">Verificando…</div>
+    ${trainer ? chk('notify_logs', 'Avisar quando um aluno finalizar o treino')
+      : chk('notify_replies', 'Quando meu personal responder') + chk('notify_plans', 'Quando meu treino for atualizado') +
+        `<div class="group-title">Lembrete de treino</div>
+         <div class="chips" style="flex-wrap:wrap">${[[1, 'Seg'], [2, 'Ter'], [3, 'Qua'], [4, 'Qui'], [5, 'Sex'], [6, 'Sáb'], [0, 'Dom']].map(([d, l]) => `<button class="chip ${days.includes(d) ? 'on' : ''}" data-act="remDay" data-d="${d}">${l}</button>`).join('')}</div>
+         <label>Horário</label><input type="time" data-pref="remind_time" value="${esc((p.remind_time || '').slice(0, 5))}" style="max-width:150px">
+         <small style="margin-top:6px">Nos dias marcados, o app lembra você no horário escolhido — se ainda não tiver treinado.</small>`}
+  </div>`;
+}
+async function updatePushBox() {
+  const box = $('#pushBox'); if (!box) return;
+  const st = await pushState().catch(() => 'unsupported');
+  box.innerHTML = {
+    'ios-install': 'No iPhone, primeiro adicione o app à Tela de Início (Safari → Compartilhar → “Adicionar à Tela de Início”) e abra pelo ícone. Depois ative aqui.',
+    unsupported: 'Este navegador não recebe notificações. No Android, use o Chrome; no iPhone, iOS 16.4 ou mais novo com o app na Tela de Início.',
+    denied: 'As notificações estão bloqueadas para este app. Libere nas configurações do celular/navegador.',
+    off: `Desativadas neste celular.<button class="btn primary block" style="margin-top:8px" data-act="pushOn">🔔 Ativar notificações neste celular</button>`,
+    on: `✅ Ativadas neste celular. <button class="link" data-act="pushOff">Desativar</button>`
+  }[st] || '';
+}
+let prefT;
+function setPref(k, v) {
+  S.prefs = { ...(S.prefs || {}), [k]: v };
+  clearTimeout(prefT);
+  prefT = setTimeout(async () => {
+    const p = S.prefs, pick = {};
+    ['notify_logs', 'notify_replies', 'notify_plans', 'remind_days', 'remind_time'].forEach(x => { if (p[x] !== undefined) pick[x] = p[x]; });
+    pick.tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'America/Sao_Paulo';
+    try { S.prefs = await api.savePrefs(S.user.id, pick); toast('Preferência salva ✓'); }
+    catch (e) { toast('Erro: ' + ptError(e)); }
+  }, 500);
+}
+function notifyQuiet(type, id) { if (pushOK() && id && !String(id).startsWith('local')) api.notify(type, id).catch(() => {}); }
+function openDeep(hash) {
+  const d = takeDeepLink(hash);
+  if (!d || !S.role) return;
+  pendingDeep = d;
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  if (S.role === 'trainer') refreshTrainer(true).then(applyDeep); else applyDeep();
+}
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.open) openDeep(new URL(e.data.open).hash); });
+window.addEventListener('hashchange', () => openDeep(location.hash));
 
 /* ===================== cronômetro de descanso ===================== */
 let timerInt = null, timerEnd = 0, audioCtx = null, timerDone = null;
@@ -1515,7 +1617,22 @@ const actions = {
   back: () => go($('#top')._back || { name: 'students' }),
   tab: el => { if (S.role === 'student') { S.view = { name: el.dataset.k }; render(); window.scrollTo(0, 0); } else go({ name: el.dataset.k }); },
   authTab: el => { authTab = el.dataset.k; authMsg = null; renderAuth(); },
-  logout: async () => { flushPlanSave(); try { await api.signOut(); } catch {} resetState(); renderAuth(); },
+  logout: async () => { flushPlanSave(); try { await disablePush(); } catch {} try { await api.signOut(); } catch {} resetState(); renderAuth(); },
+  pushOn: async () => { try { await enablePush(); toast('Notificações ativadas ✓'); } catch (e) { toast(ptError(e)); } updatePushBox(); },
+  pushOff: async () => { await disablePush(); toast('Notificações desativadas neste celular'); updatePushBox(); },
+  remDay: el => {
+    const d = +el.dataset.d, days = new Set((S.prefs && S.prefs.remind_days) || []);
+    days.has(d) ? days.delete(d) : days.add(d);
+    el.classList.toggle('on', days.has(d));
+    setPref('remind_days', [...days].sort());
+    if (days.size && !(S.prefs && S.prefs.remind_time)) { const t = document.querySelector('[data-pref=remind_time]'); if (t && !t.value) { t.value = '07:00'; setPref('remind_time', '07:00'); } }
+  },
+  notifyPlan: async () => {
+    flushPlanSave();
+    const { s, p } = cur();
+    const r = await api.notify('plan', p.id);
+    toast(r && r.sent ? `${s.name.split(' ')[0]} foi avisado(a) ✓` : r && r.reason === 'desativado' ? 'O aluno desligou esse tipo de aviso' : 'O aluno ainda não ativou as notificações no celular');
+  },
   reload: () => location.reload(),
   becomeTrainer: () => formDialog('Seu perfil de personal', [{ k: 'name', label: 'Seu nome (aparece para os alunos)', req: true, ph: 'Ex.: Prof. Leo' }], {}, async d => {
     await api.createTrainer(d.name); $('#dlg').close(); await enter(S.user);
@@ -1562,6 +1679,7 @@ const actions = {
       [{ k: 'reply', label: 'Sua resposta (aparece no histórico do aluno)', type: 'textarea', ph: 'Ex.: Ótimo treino! Na próxima, suba 2 kg no agachamento.' }],
       { reply: l.trainer_reply }, async d => {
         await api.replyLog(l.id, d.reply);
+        if (d.reply) notifyQuiet('reply', l.id);
         Object.assign(l, { trainer_reply: d.reply, replied_at: d.reply ? new Date().toISOString() : null, trainer_seen: true });
         render(); toast(d.reply ? 'Resposta enviada ✓' : 'Resposta removida');
       }, l.comment ? `<p class="quote">Comentário: “${esc(l.comment)}”</p>` : '');
@@ -1705,6 +1823,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => {
   const t = e.target;
+  if (t.dataset && t.dataset.pref) { setPref(t.dataset.pref, t.type === 'checkbox' ? t.checked : (t.value || null)); return; }
   if (t.tagName === 'SELECT' && t.dataset.f && S.role === 'trainer') {
     const { p } = cur(); if (p && p.items[+t.dataset.i][t.dataset.f] !== t.value) { p.items[+t.dataset.i][t.dataset.f] = t.value; queuePlanSave(p); }
   }
